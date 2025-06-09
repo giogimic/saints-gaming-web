@@ -329,4 +329,4 @@ export async function deleteCategory(id: string): Promise<void> {
     console.error('Error deleting category:', error);
     throw error;
   }
-} 
+}
