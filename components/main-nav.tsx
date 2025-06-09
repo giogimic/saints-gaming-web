@@ -8,6 +8,8 @@ import { useSession } from 'next-auth/react';
 import { UserNav } from '@/components/user-nav';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { ThemeToggle } from '@/components/theme-toggle';
+import Image from 'next/image';
 
 export function MainNav() {
   const pathname = usePathname();
@@ -38,11 +40,12 @@ export function MainNav() {
   ];
 
   return (
-    <div className="border-b">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center space-x-2">
+              <Image src="/saintsgaming-logo.png" alt="Saints Gaming Logo" width={48} height={48} className="rounded" />
               <span className="text-xl font-bold">SaintsGaming</span>
             </Link>
             <nav className="hidden md:flex items-center space-x-6">
@@ -63,11 +66,12 @@ export function MainNav() {
             </nav>
           </div>
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             {session ? (
               <UserNav />
             ) : (
               <div className="hidden md:flex items-center gap-2">
-                <Button variant="outline" asChild>
+                <Button asChild variant="outline">
                   <Link href="/auth/signin">Sign In</Link>
                 </Button>
                 <Button asChild>
@@ -108,7 +112,7 @@ export function MainNav() {
               ))}
               {!session && (
                 <div className="flex flex-col gap-2 pt-4 border-t">
-                  <Button variant="outline" asChild>
+                  <Button asChild variant="outline">
                     <Link href="/auth/signin">Sign In</Link>
                   </Button>
                   <Button asChild>
@@ -120,6 +124,6 @@ export function MainNav() {
           </div>
         </div>
       )}
-    </div>
+    </header>
   );
 } 

@@ -9,10 +9,10 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
     signIn: "/auth/signin",
+    signOut: "/auth/signout",
     error: "/auth/error",
   },
   providers: [
@@ -28,69 +28,45 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
+          where: { email: credentials.email },
         });
 
-        if (!user || !user?.password) {
+        if (!user || !user.password) {
           return null;
         }
 
-        const isCorrectPassword = await bcrypt.compare(
+        const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
         );
 
-        if (!isCorrectPassword) {
+        if (!isPasswordValid) {
           return null;
         }
 
         return {
           id: user.id,
-          email: user.email || "",
-          name: user.name || "",
-          role: user.role as UserRole,
-          steamId: user.steamId || undefined,
+          email: user.email,
+          name: user.name,
+          role: user.role,
         };
       },
     }),
   ],
   callbacks: {
-    async session({ token, session }) {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = user.role;
+      }
+      return token;
+    },
+    async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string;
-        session.user.name = token.name as string;
-        session.user.email = token.email as string;
         session.user.role = token.role as UserRole;
-        session.user.steamId = token.steamId as string | undefined;
       }
-
       return session;
     },
-    async jwt({ token, user }) {
-      const dbUser = await prisma.user.findFirst({
-        where: {
-          email: token.email as string,
-        },
-      });
-
-      if (!dbUser) {
-        if (user) {
-          token.id = user.id;
-        }
-        return token;
-      }
-
-      return {
-        id: dbUser.id,
-        name: dbUser.name || "",
-        email: dbUser.email || "",
-        role: dbUser.role as UserRole,
-        steamId: dbUser.steamId || undefined,
-      };
-    },
   },
-  secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
 }; 

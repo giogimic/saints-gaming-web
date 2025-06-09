@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { authOptions } from '@/lib/auth-config';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import type { UserSession } from "@/lib/auth";
 import { UserRole } from '@prisma/client';
+import { prisma } from './prisma';
 
 export class ApiError extends Error {
   constructor(
@@ -50,4 +52,78 @@ export const validateInput = (data: unknown, schema: any) => {
   } catch (error) {
     throw new ApiError(400, 'Invalid input data');
   }
-}; 
+};
+
+export async function getCategories() {
+  return prisma.category.findMany({
+    include: {
+      _count: {
+        select: {
+          threads: true
+        }
+      }
+    },
+    orderBy: {
+      order: 'asc'
+    }
+  });
+}
+
+export async function getRecentActivity() {
+  const [recentThreads, recentPosts] = await Promise.all([
+    prisma.thread.findMany({
+      take: 5,
+      orderBy: {
+        createdAt: 'desc'
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        }
+      }
+    }),
+    prisma.post.findMany({
+      take: 5,
+      orderBy: {
+        createdAt: 'desc'
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        thread: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
+        }
+      }
+    })
+  ]);
+
+  return {
+    recentThreads,
+    recentPosts
+  };
+} 

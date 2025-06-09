@@ -71,8 +71,16 @@ export function AdminToolbar() {
     return null;
   }
 
-  if (!hasPermission(session.user.role as UserRole, 'edit:page')) {
-    console.log('AdminToolbar - No permission for edit:page');
+  // Check for any admin-level permission
+  const hasAdminPermission = 
+    hasPermission(session.user.role as UserRole, 'manage:settings') ||
+    hasPermission(session.user.role as UserRole, 'manage:users') ||
+    hasPermission(session.user.role as UserRole, 'manage:roles') ||
+    hasPermission(session.user.role as UserRole, 'manage:content') ||
+    hasPermission(session.user.role as UserRole, 'edit:page');
+
+  if (!hasAdminPermission) {
+    console.log('AdminToolbar - No admin permissions');
     return null;
   }
 

@@ -35,17 +35,17 @@ export default function RootLayout({
         <body className={inter.className}>
           <AuthProvider>
             <GlobalErrorBoundary>
-              <AdminToolbar />
-              <div className="flex min-h-screen flex-col">
+              <div className="min-h-screen flex flex-col">
+                <AdminToolbar />
                 <MainNav />
-                <main className="flex-1">
+                <main className="flex-1 container mx-auto px-4 py-8">
                   {children}
                 </main>
                 <Footer />
+                <CookieConsent />
+                <AgeVerification />
+                <Toaster />
               </div>
-              <CookieConsent />
-              <AgeVerification />
-              <Toaster />
             </GlobalErrorBoundary>
           </AuthProvider>
         </body>
