@@ -182,4 +182,66 @@ export async function DELETE(req: NextRequest) {
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+export async function GETByCategory(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const categorySlug = searchParams.get('categorySlug');
+
+    if (!categorySlug) {
+      return new NextResponse('Category slug is required', { status: 400 });
+    }
+
+    const category = await prisma.category.findUnique({
+      where: { slug: categorySlug },
+    });
+
+    if (!category) {
+      return new NextResponse('Category not found', { status: 404 });
+    }
+
+    const threads = await prisma.thread.findMany({
+      where: {
+        categoryId: category.id,
+      },
+      include: {
+        author: {
+          select: {
+            name: true,
+          },
+        },
+        posts: {
+          include: {
+            author: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return NextResponse.json(threads.map(thread => ({
+      id: thread.id,
+      title: thread.title,
+      content: thread.content,
+      authorName: thread.author.name || 'Anonymous',
+      createdAt: thread.createdAt,
+      isPinned: thread.isPinned,
+      posts: thread.posts.map(post => ({
+        id: post.id,
+        content: post.content,
+        authorName: post.author.name || 'Anonymous',
+        createdAt: post.createdAt,
+      })),
+    })));
+  } catch (error) {
+    console.error('Error fetching threads:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
 } 

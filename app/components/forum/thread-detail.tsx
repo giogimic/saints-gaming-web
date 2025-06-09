@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageSquare, Clock, User, ThumbsUp, Flag } from 'lucide-react';
+import { MessageSquare, Clock, User, ThumbsUp, Flag, Pin, Lock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,6 +7,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Editor } from '@/components/editor';
+import { useSession } from 'next-auth/react';
+import { hasPermission } from '@/lib/permissions';
+import { toast } from '@/components/ui/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 interface Comment {
   id: string;
@@ -27,6 +31,8 @@ interface ThreadDetailProps {
     title: string;
     content: string;
     createdAt: Date;
+    isPinned: boolean;
+    isLocked: boolean;
     author: {
       id: string;
       username: string;
@@ -38,8 +44,48 @@ interface ThreadDetailProps {
 }
 
 export function ThreadDetail({ thread, comments }: ThreadDetailProps) {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState('discussion');
   const [replyContent, setReplyContent] = useState('');
+
+  const canManageThreads = session?.user && hasPermission(session.user.role, 'manage:content');
+  const canPost = !thread.isLocked || canManageThreads;
+
+  const handlePinThread = async () => {
+    try {
+      const response = await fetch(`/api/forum/threads/${thread.id}/pin`, {
+        method: 'PUT',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to pin thread');
+      }
+
+      const updatedThread = await response.json();
+      toast.success(updatedThread.isPinned ? 'Thread pinned' : 'Thread unpinned');
+    } catch (error) {
+      console.error('Error pinning thread:', error);
+      toast.error('Failed to pin thread');
+    }
+  };
+
+  const handleLockThread = async () => {
+    try {
+      const response = await fetch(`/api/forum/threads/${thread.id}/lock`, {
+        method: 'PUT',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to lock thread');
+      }
+
+      const updatedThread = await response.json();
+      toast.success(updatedThread.isLocked ? 'Thread locked' : 'Thread unlocked');
+    } catch (error) {
+      console.error('Error locking thread:', error);
+      toast.error('Failed to lock thread');
+    }
+  };
 
   const renderComment = (comment: Comment, depth = 0) => (
     <div key={comment.id} className={`ml-${depth * 4} mt-4`}>
@@ -91,7 +137,15 @@ export function ThreadDetail({ thread, comments }: ThreadDetailProps) {
             <AvatarFallback>{thread.author.username[0]}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold">{thread.title}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">{thread.title}</h1>
+              {thread.isPinned && (
+                <Badge variant="secondary">Pinned</Badge>
+              )}
+              {thread.isLocked && (
+                <Badge variant="destructive">Locked</Badge>
+              )}
+            </div>
             <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <User className="w-4 h-4" />
@@ -114,6 +168,26 @@ export function ThreadDetail({ thread, comments }: ThreadDetailProps) {
                 ))}
               </div>
             )}
+            {canManageThreads && (
+              <div className="flex gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePinThread}
+                >
+                  <Pin className="w-4 h-4 mr-2" />
+                  {thread.isPinned ? 'Unpin' : 'Pin'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLockThread}
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  {thread.isLocked ? 'Unlock' : 'Lock'}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </Card>
@@ -129,17 +203,26 @@ export function ThreadDetail({ thread, comments }: ThreadDetailProps) {
           <div className="space-y-4">
             {comments.map((comment) => renderComment(comment))}
             
-            <Card className="p-4">
-              <h3 className="text-lg font-semibold mb-4">Post a Reply</h3>
-              <Editor
-                value={replyContent}
-                onChange={setReplyContent}
-                placeholder="Write your reply..."
-              />
-              <div className="flex justify-end mt-4">
-                <Button>Post Reply</Button>
-              </div>
-            </Card>
+            {canPost ? (
+              <Card className="p-4">
+                <h3 className="text-lg font-semibold mb-4">Post a Reply</h3>
+                <Editor
+                  value={replyContent}
+                  onChange={setReplyContent}
+                  placeholder="Write your reply..."
+                />
+                <div className="flex justify-end mt-4">
+                  <Button>Post Reply</Button>
+                </div>
+              </Card>
+            ) : (
+              <Card className="p-4">
+                <div className="text-center text-muted-foreground">
+                  <Lock className="w-6 h-6 mx-auto mb-2" />
+                  <p>This thread is locked. Only moderators can post replies.</p>
+                </div>
+              </Card>
+            )}
           </div>
         </TabsContent>
       </Tabs>

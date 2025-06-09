@@ -1,18 +1,9 @@
+"use client";
+
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
-import { Button } from '@/components/ui/button';
-import {
-  Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Link as LinkIcon,
-  Image as ImageIcon,
-  Code,
-  Quote,
-} from 'lucide-react';
+import Link from '@tiptap/extension-link';
 
 interface EditorProps {
   value: string;
@@ -24,19 +15,19 @@ export function Editor({ value, onChange, placeholder }: EditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
+      Image,
       Link.configure({
         openOnClick: false,
       }),
-      Image,
     ],
     content: value,
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-    },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[150px]',
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none',
       },
+    },
+    onUpdate: ({ editor }) => {
+      onChange(editor.getHTML());
     },
   });
 
@@ -45,83 +36,62 @@ export function Editor({ value, onChange, placeholder }: EditorProps) {
   }
 
   return (
-    <div className="border rounded-lg">
-      <div className="border-b p-2 flex gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
+    <div className="border rounded-md">
+      <div className="border-b p-2 flex gap-2">
+        <button
           onClick={() => editor.chain().focus().toggleBold().run()}
-          className={editor.isActive('bold') ? 'bg-muted' : ''}
+          className={`p-2 rounded hover:bg-gray-100 ${editor.isActive('bold') ? 'bg-gray-100' : ''}`}
+          type="button"
         >
-          <Bold className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
+          Bold
+        </button>
+        <button
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={editor.isActive('italic') ? 'bg-muted' : ''}
+          className={`p-2 rounded hover:bg-gray-100 ${editor.isActive('italic') ? 'bg-gray-100' : ''}`}
+          type="button"
         >
-          <Italic className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
+          Italic
+        </button>
+        <button
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={editor.isActive('bulletList') ? 'bg-muted' : ''}
+          className={`p-2 rounded hover:bg-gray-100 ${editor.isActive('bulletList') ? 'bg-gray-100' : ''}`}
+          type="button"
         >
-          <List className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
+          Bullet List
+        </button>
+        <button
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={editor.isActive('orderedList') ? 'bg-muted' : ''}
+          className={`p-2 rounded hover:bg-gray-100 ${editor.isActive('orderedList') ? 'bg-gray-100' : ''}`}
+          type="button"
         >
-          <ListOrdered className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          className={editor.isActive('codeBlock') ? 'bg-muted' : ''}
-        >
-          <Code className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          className={editor.isActive('blockquote') ? 'bg-muted' : ''}
-        >
-          <Quote className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
+          Numbered List
+        </button>
+        <button
           onClick={() => {
             const url = window.prompt('Enter the URL');
             if (url) {
               editor.chain().focus().setLink({ href: url }).run();
             }
           }}
-          className={editor.isActive('link') ? 'bg-muted' : ''}
+          className={`p-2 rounded hover:bg-gray-100 ${editor.isActive('link') ? 'bg-gray-100' : ''}`}
+          type="button"
         >
-          <LinkIcon className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
+          Link
+        </button>
+        <button
           onClick={() => {
             const url = window.prompt('Enter the image URL');
             if (url) {
               editor.chain().focus().setImage({ src: url }).run();
             }
           }}
+          className="p-2 rounded hover:bg-gray-100"
+          type="button"
         >
-          <ImageIcon className="w-4 h-4" />
-        </Button>
+          Image
+        </button>
       </div>
-      <EditorContent editor={editor} className="p-4" />
+      <EditorContent editor={editor} className="p-4 min-h-[200px]" />
     </div>
   );
 } 

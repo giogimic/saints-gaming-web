@@ -1,8 +1,9 @@
-import { MessageSquare, Clock, User, Tag } from 'lucide-react';
+import { MessageSquare, Clock, User, Tag, Pin, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 interface Thread {
   id: string;
@@ -10,6 +11,8 @@ interface Thread {
   slug: string;
   createdAt: Date;
   updatedAt: Date;
+  isPinned: boolean;
+  isLocked: boolean;
   author: {
     username: string;
   };
@@ -48,15 +51,29 @@ export function ThreadList({ threads, currentPage, totalPages, categorySlug, sor
         </Link>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-4">
         {threads.map((thread) => (
           <div key={thread.id} className="card bg-base-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="card-body p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <Link href={`/forum/${categorySlug}/${thread.slug}`} className="hover:text-primary">
-                    <h3 className="text-lg font-semibold">{thread.title}</h3>
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link href={`/forum/${categorySlug}/${thread.slug}`} className="hover:text-primary">
+                      <h3 className="text-lg font-semibold">{thread.title}</h3>
+                    </Link>
+                    {thread.isPinned && (
+                      <Badge variant="secondary">
+                        <Pin className="w-3 h-3 mr-1" />
+                        Pinned
+                      </Badge>
+                    )}
+                    {thread.isLocked && (
+                      <Badge variant="destructive">
+                        <Lock className="w-3 h-3 mr-1" />
+                        Locked
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex items-center gap-4 mt-2 text-sm text-base-content/70">
                     <div className="flex items-center gap-1">
                       <User className="w-4 h-4" />

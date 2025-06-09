@@ -22,7 +22,7 @@ async function getThread(categorySlug: string, threadSlug: string) {
       author: {
         select: {
           id: true,
-          username: true,
+          name: true,
           image: true,
         },
       },
@@ -31,7 +31,7 @@ async function getThread(categorySlug: string, threadSlug: string) {
           author: {
             select: {
               id: true,
-              username: true,
+              name: true,
               image: true,
             },
           },
@@ -40,7 +40,7 @@ async function getThread(categorySlug: string, threadSlug: string) {
               author: {
                 select: {
                   id: true,
-                  username: true,
+                  name: true,
                   image: true,
                 },
               },
@@ -86,9 +86,11 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
             title: thread.title,
             content: thread.content,
             createdAt: thread.createdAt,
+            isPinned: thread.isPinned,
+            isLocked: thread.isLocked,
             author: {
               id: thread.author.id,
-              username: thread.author.username || 'Anonymous',
+              username: thread.author.name || 'Anonymous',
               avatarUrl: thread.author.image || undefined,
             },
             tags: [], // TODO: Add tags support
@@ -99,7 +101,7 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
             createdAt: post.createdAt,
             author: {
               id: post.author.id,
-              username: post.author.username || 'Anonymous',
+              username: post.author.name || 'Anonymous',
               avatarUrl: post.author.image || undefined,
             },
             likes: 0, // TODO: Add likes support
@@ -109,7 +111,7 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
               createdAt: comment.createdAt,
               author: {
                 id: comment.author.id,
-                username: comment.author.username || 'Anonymous',
+                username: comment.author.name || 'Anonymous',
                 avatarUrl: comment.author.image || undefined,
               },
               likes: 0,
