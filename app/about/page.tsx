@@ -31,8 +31,8 @@ export default function AboutPage() {
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">What We Do</h2>
           <ul className="space-y-2 text-muted-foreground">
-            <li>• Maintain active game servers with carefully selected mods</li>
-            <li>• Create and curate modpacks for various games</li>
+            <li>• Create and maintain custom modpacks for Minecraft, Stardew Valley, and ARK</li>
+            <li>• Host dedicated servers for our modpacks</li>
             <li>• Build a welcoming community for modded gaming enthusiasts</li>
             <li>• Share knowledge and help others get started with modded gaming</li>
           </ul>

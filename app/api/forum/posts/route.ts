@@ -5,129 +5,222 @@ import { v4 as uuidv4 } from 'uuid';
 import { ForumPost } from '@/lib/types';
 import { getForumPosts, createForumPost, updateForumPost, deleteForumPost } from '@/lib/db';
 import { hasPermission } from '@/lib/permissions';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+import { checkPermission } from '@/lib/permissions';
+
+const postSchema = z.object({
+  content: z.string().min(1).max(10000),
+  threadId: z.string(),
+});
 
 // GET: List all posts
-export async function GET(request: Request) {
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const postId = searchParams.get('id');
+    const { searchParams } = new URL(req.url);
+    const threadId = searchParams.get('threadId');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const skip = (page - 1) * limit;
 
-    const posts = await getForumPosts(postId || undefined);
-    return NextResponse.json(posts);
+    if (!threadId) {
+      return new NextResponse('Thread ID is required', { status: 400 });
+    }
+
+    const [posts, total] = await Promise.all([
+      prisma.post.findMany({
+        where: { threadId },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+          comments: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.post.count({
+        where: { threadId },
+      }),
+    ]);
+
+    return NextResponse.json({
+      posts,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (error) {
-    console.error('Error fetching posts:', error);
-    return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 });
+    console.error('[POSTS_GET]', error);
+    return new NextResponse('Internal error', { status: 500 });
   }
 }
 
 // POST: Create a new post
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const { title, content, categoryId } = await request.json();
-    if (!title || !content || !categoryId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const json = await req.json();
+    const body = postSchema.parse(json);
+
+    const thread = await prisma.thread.findUnique({
+      where: { id: body.threadId },
+      select: { isLocked: true },
+    });
+
+    if (!thread) {
+      return new NextResponse('Thread not found', { status: 404 });
     }
 
-    const post: ForumPost = {
-      id: crypto.randomUUID(),
-      title,
-      content,
-      authorId: session.user.id,
-      categoryId,
-      isPinned: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    if (thread.isLocked) {
+      return new NextResponse('Thread is locked', { status: 403 });
+    }
 
-    await createForumPost(post);
-    return NextResponse.json(post, { status: 201 });
+    const post = await prisma.post.create({
+      data: {
+        content: body.content,
+        threadId: body.threadId,
+        authorId: session.user.id,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(post);
   } catch (error) {
-    console.error('Error creating post:', error);
-    return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
+    console.error('[POSTS_POST]', error);
+    if (error instanceof z.ZodError) {
+      return new NextResponse('Invalid request data', { status: 422 });
+    }
+    return new NextResponse('Internal error', { status: 500 });
   }
 }
 
 // PATCH: Update a post
-export async function PATCH(request: Request) {
+export async function PATCH(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const { id, title, content, categoryId, isPinned } = await request.json();
-    if (!id || !title || !content || !categoryId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
+    const json = await req.json();
+    const { id, content } = z
+      .object({
+        id: z.string(),
+        content: z.string().min(1).max(10000),
+      })
+      .parse(json);
 
-    const posts = await getForumPosts(id);
-    if (!Array.isArray(posts)) {
-      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
-    }
+    const post = await prisma.post.findUnique({
+      where: { id },
+      select: { authorId: true },
+    });
 
-    const post = posts.find(p => p.id === id);
     if (!post) {
-      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+      return new NextResponse('Post not found', { status: 404 });
     }
 
     if (post.authorId !== session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const hasPermission = await checkPermission(session.user.id, 'edit:posts');
+      if (!hasPermission) {
+        return new NextResponse('Forbidden', { status: 403 });
+      }
     }
 
-    const updatedPost: ForumPost = {
-      ...post,
-      title,
-      content,
-      categoryId,
-      isPinned: isPinned ?? post.isPinned,
-      updatedAt: new Date().toISOString()
-    };
+    const updatedPost = await prisma.post.update({
+      where: { id },
+      data: { content },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
+    });
 
-    await updateForumPost(updatedPost);
     return NextResponse.json(updatedPost);
   } catch (error) {
-    console.error('Error updating post:', error);
-    return NextResponse.json({ error: 'Failed to update post' }, { status: 500 });
+    console.error('[POSTS_PATCH]', error);
+    if (error instanceof z.ZodError) {
+      return new NextResponse('Invalid request data', { status: 422 });
+    }
+    return new NextResponse('Internal error', { status: 500 });
   }
 }
 
 // DELETE: Delete a post
-export async function DELETE(request: Request) {
+export async function DELETE(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+
     if (!id) {
-      return NextResponse.json({ error: 'Missing post ID' }, { status: 400 });
+      return new NextResponse('Post ID is required', { status: 400 });
     }
 
-    const posts = await getForumPosts(id);
-    if (!Array.isArray(posts)) {
-      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
-    }
+    const post = await prisma.post.findUnique({
+      where: { id },
+      select: { authorId: true },
+    });
 
-    const post = posts.find(p => p.id === id);
     if (!post) {
-      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+      return new NextResponse('Post not found', { status: 404 });
     }
 
     if (post.authorId !== session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const hasPermission = await checkPermission(session.user.id, 'delete:posts');
+      if (!hasPermission) {
+        return new NextResponse('Forbidden', { status: 403 });
+      }
     }
 
-    await deleteForumPost(id);
-    return NextResponse.json({ success: true });
+    await prisma.post.delete({
+      where: { id },
+    });
+
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error('Error deleting post:', error);
-    return NextResponse.json({ error: 'Failed to delete post' }, { status: 500 });
+    console.error('[POSTS_DELETE]', error);
+    return new NextResponse('Internal error', { status: 500 });
   }
 } 

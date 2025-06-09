@@ -13,29 +13,33 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  admin
+  moderator
+  member
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
-  password      String
-  bio           String?
-  steamId       String?
-  discordId     String?
-  twitchId      String?
-  avatar        String?
-  lastLogin     DateTime?
   emailVerified DateTime?
   image         String?
+  password      String?
   role          String    @default("member")
+  bio           String?
+  steamId       String?   @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  lastLogin     DateTime?
   accounts      Account[]
   sessions      Session[]
-  posts         Post[]
-  replies       Reply[]
-  settings      UserSettings?
-  gamingProfile UserGamingProfile?
   socialLinks   SocialLink[]
+  threads       Thread[]
+  posts         Post[]
+  comments      Comment[]
+  settings      UserSettings?        @relation("UserSettingsRelation")
+  gamingProfile UserGamingProfile?   @relation("UserGamingProfileRelation")
 }
 
 model Account {
@@ -75,28 +79,28 @@ model VerificationToken {
 
 model UserSettings {
   id                String   @id @default(cuid())
-  userId           String   @unique
-  theme            String   @default("system")
-  notifications    Boolean  @default(true)
-  language         String   @default("en")
-  timezone         String   @default("UTC")
+  userId            String   @unique
+  theme             String   @default("system")
+  notifications     Boolean  @default(true)
+  language          String   @default("en")
+  timezone          String   @default("UTC")
   emailNotifications Boolean @default(true)
-  darkMode         Boolean  @default(false)
-  showOnlineStatus Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  darkMode          Boolean  @default(false)
+  showOnlineStatus  Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation("UserSettingsRelation", fields: [userId], references: [id])
 }
 
 model UserGamingProfile {
-  id               String   @id @default(cuid())
-  userId           String   @unique
-  favoriteGames    String   @default("[]")
-  gamingSetup      String   @default("[]")
-  gamingPreferences String  @default("[]")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  favoriteGames      String   @default("[]")
+  gamingSetup        String   @default("[]")
+  gamingPreferences  String  @default("[]")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation("UserGamingProfileRelation", fields: [userId], references: [id])
 }
 
 model SocialLink {
@@ -106,41 +110,68 @@ model SocialLink {
   url       String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Category {
   id          String   @id @default(cuid())
   name        String
   description String?
+  slug        String   @unique
   order       Int      @default(0)
   isDefault   Boolean  @default(false)
+  threads     Thread[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  posts       Post[]
 }
 
 model Post {
-  id         String    @id @default(cuid())
-  title      String
-  content    String
-  published  Boolean   @default(false)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  authorId   String
-  categoryId String
-  author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  replies    Reply[]
+  id        String    @id @default(cuid())
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  authorId  String
+  threadId  String
+  author    User      @relation(fields: [authorId], references: [id])
+  thread    Thread    @relation(fields: [threadId], references: [id])
+  comments  Comment[]
 }
 
-model Reply {
+model Comment {
   id        String   @id @default(cuid())
   content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   authorId  String
   postId    String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  content   String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Thread {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  content     String
+  isPinned    Boolean  @default(false)
+  isLocked    Boolean  @default(false)
+  viewCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  authorId    String
+  categoryId  String
+  author      User     @relation(fields: [authorId], references: [id])
+  category    Category @relation(fields: [categoryId], references: [id])
+  posts       Post[]
+
+  @@unique([categoryId, slug])
 }

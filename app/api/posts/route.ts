@@ -1,66 +1,185 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { createPost, getPosts } from '@/lib/db';
-import { hasPermission } from '@/lib/permissions';
-import { v4 as uuidv4 } from 'uuid';
+import { prisma } from '@/lib/prisma';
+import { handleApiError, requireAuth, requireRole } from '@/lib/api-utils';
+import { z } from 'zod';
 
-// GET: List all posts
-export async function GET(request: NextRequest) {
+const postSchema = z.object({
+  content: z.string().min(1),
+  threadId: z.string(),
+});
+
+const updatePostSchema = postSchema.extend({
+  id: z.string(),
+});
+
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const categoryId = searchParams.get('categoryId');
-    const posts = await getPosts(categoryId || undefined);
-    return NextResponse.json(posts);
+    const { searchParams } = new URL(req.url);
+    const threadId = searchParams.get('threadId');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const skip = (page - 1) * limit;
+
+    if (!threadId) {
+      throw new Error('Thread ID is required');
+    }
+
+    const [posts, total] = await Promise.all([
+      prisma.post.findMany({
+        where: { threadId },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+          comments: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+        skip,
+        take: limit,
+      }),
+      prisma.post.count({ where: { threadId } }),
+    ]);
+
+    return NextResponse.json({
+      posts,
+      pagination: {
+        total,
+        pages: Math.ceil(total / limit),
+        current: page,
+      },
+    });
   } catch (error) {
-    console.error('Error fetching posts:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch posts' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }
 
-// POST: Create a new post
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const session = await requireAuth();
+    const data = await req.json();
+    const validatedData = postSchema.parse(data);
 
-    if (!hasPermission(session.user.role, 'create:post')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const { title, content, categoryId } = await request.json();
-
-    if (!title || !content || !categoryId) {
-      return NextResponse.json(
-        { error: 'Title, content, and category are required' },
-        { status: 400 }
-      );
-    }
-
-    const post = await createPost({
-      id: uuidv4(),
-      title,
-      content,
-      categoryId,
-      authorId: session.user.id,
-      authorName: session.user.name,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      votes: [],
-      isPinned: false
+    // Check if thread exists and is not locked
+    const thread = await prisma.thread.findUnique({
+      where: { id: validatedData.threadId },
+      select: { isLocked: true },
     });
 
-    return NextResponse.json(post);
+    if (!thread) {
+      throw new Error('Thread not found');
+    }
+
+    if (thread.isLocked) {
+      await requireRole(['admin', 'moderator']);
+    }
+
+    const post = await prisma.post.create({
+      data: {
+        content: validatedData.content,
+        threadId: validatedData.threadId,
+        authorId: session.user.id,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(post, { status: 201 });
   } catch (error) {
-    console.error('Error creating post:', error);
-    return NextResponse.json(
-      { error: 'Failed to create post' },
-      { status: 500 }
-    );
+    return handleApiError(error);
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await requireAuth();
+    const data = await req.json();
+    const { id, ...updateData } = updatePostSchema.parse(data);
+
+    const post = await prisma.post.findUnique({
+      where: { id },
+      select: { authorId: true },
+    });
+
+    if (!post) {
+      throw new Error('Post not found');
+    }
+
+    if (post.authorId !== session.user.id) {
+      await requireRole(['admin', 'moderator']);
+    }
+
+    const updatedPost = await prisma.post.update({
+      where: { id },
+      data: {
+        content: updateData.content,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(updatedPost);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await requireAuth();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      throw new Error('Post ID is required');
+    }
+
+    const post = await prisma.post.findUnique({
+      where: { id },
+      select: { authorId: true },
+    });
+
+    if (!post) {
+      throw new Error('Post not found');
+    }
+
+    if (post.authorId !== session.user.id) {
+      await requireRole(['admin', 'moderator']);
+    }
+
+    await prisma.post.delete({
+      where: { id },
+    });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    return handleApiError(error);
   }
 } 

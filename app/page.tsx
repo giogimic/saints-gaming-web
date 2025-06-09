@@ -24,20 +24,20 @@ export default function HomePage() {
           <Card>
             <CardHeader>
               <Gamepad2 className="h-12 w-12 text-primary mb-4" />
-              <CardTitle>Gaming Events</CardTitle>
+              <CardTitle>Custom Modpacks</CardTitle>
               <CardDescription>
-                Join our regular gaming tournaments and events
+                Experience our curated modpacks
               </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                Participate in competitive tournaments, casual gaming sessions, and special events.
+                Play our custom modpacks for Minecraft, Stardew Valley, and ARK: Survival Ascended.
               </p>
             </CardContent>
             <CardFooter>
               <Button variant="link" asChild className="p-0">
-                <Link href="/events">
-                  View Events <ArrowRight className="ml-2 h-4 w-4" />
+                <Link href="/modpacks">
+                  View Modpacks <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             </CardFooter>

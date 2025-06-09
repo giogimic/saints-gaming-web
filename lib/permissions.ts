@@ -1,31 +1,36 @@
+import { prisma } from '@/lib/prisma';
+
 export enum UserRole {
-  ADMIN = 'admin',
-  MODERATOR = 'moderator',
-  MEMBER = 'member',
-  USER = 'user'
+  ADMIN = "admin",
+  MODERATOR = "moderator",
+  MEMBER = "member",
 }
 
 // Define the role hierarchy (higher number = higher authority)
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
-  [UserRole.ADMIN]: 4,
-  [UserRole.MODERATOR]: 3,
-  [UserRole.MEMBER]: 2,
-  [UserRole.USER]: 1
+  [UserRole.ADMIN]: 3,
+  [UserRole.MODERATOR]: 2,
+  [UserRole.MEMBER]: 1,
 };
 
 // Define permissions for each role
-export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   [UserRole.ADMIN]: [
     'view:forum',
     'create:post',
     'edit:own-post',
     'delete:own-post',
     'vote:post',
-    'manage:posts',
+    'edit:page',
     'manage:categories',
     'manage:users',
     'manage:roles',
     'manage:settings',
+    'edit:posts',
+    'delete:posts',
+    'edit:comments',
+    'delete:comments',
+    'manage:content',
   ],
   [UserRole.MODERATOR]: [
     'view:forum',
@@ -33,8 +38,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'edit:own-post',
     'delete:own-post',
     'vote:post',
-    'manage:posts',
+    'edit:page',
     'manage:categories',
+    'edit:posts',
+    'delete:posts',
+    'edit:comments',
+    'delete:comments',
+    'manage:content',
   ],
   [UserRole.MEMBER]: [
     'view:forum',
@@ -43,23 +53,24 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'delete:own-post',
     'vote:post',
   ],
-  [UserRole.USER]: [
-    'view:forum',
-    'vote:post',
-  ],
 };
 
-export type Permission = 
+export type Permission =
   | 'view:forum'
   | 'create:post'
   | 'edit:own-post'
   | 'delete:own-post'
   | 'vote:post'
-  | 'manage:posts'
+  | 'edit:page'
   | 'manage:categories'
   | 'manage:users'
   | 'manage:roles'
-  | 'manage:settings';
+  | 'manage:settings'
+  | 'edit:posts'
+  | 'delete:posts'
+  | 'edit:comments'
+  | 'delete:comments'
+  | 'manage:content';
 
 /**
  * Check if a user role has a specific permission
@@ -131,4 +142,29 @@ export const DEFAULT_CATEGORIES = [
     order: 5,
     isDefault: true
   }
-] as const; 
+] as const;
+
+export const isAdmin = (role: UserRole): boolean => role === UserRole.ADMIN;
+export const isModerator = (role: UserRole): boolean => role === UserRole.MODERATOR || role === UserRole.ADMIN;
+export const isMember = (role: UserRole): boolean => true; // All roles are members 
+
+export async function checkPermission(
+  userId: string,
+  permission: Permission
+): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+
+  if (!user) {
+    return false;
+  }
+
+  const permissions = ROLE_PERMISSIONS[user.role as UserRole] || [];
+  return permissions.includes(permission);
+}
+
+export function getPermissionsForRole(role: string): Permission[] {
+  return ROLE_PERMISSIONS[role as UserRole] || [];
+} 

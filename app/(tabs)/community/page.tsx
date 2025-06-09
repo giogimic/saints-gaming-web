@@ -100,19 +100,19 @@ export default function CommunityPage() {
           <p className="text-muted-foreground">No users found</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredUsers.map((user) => {
-            const gravatarUrl = `https://www.gravatar.com/avatar/${md5(user.email)}?d=identicon&s=200`;
-            return (
-              <Card key={user.id}>
-                <CardHeader>
-                  <div className="flex items-center gap-4">
+              const gravatarUrl = `https://www.gravatar.com/avatar/${md5(user.email)}?d=identicon&s=200`;
+              return (
+                <Card key={user.id}>
+                  <CardHeader>
+                    <div className="flex items-center gap-4">
                     <img 
                       src={user.avatar || gravatarUrl} 
                       alt={user.name} 
                       className="w-16 h-16 rounded-full object-cover"
                     />
-                    <div>
+                      <div>
                       <CardTitle className="flex items-center gap-2">
                         {user.name}
                         <Badge variant={
@@ -123,15 +123,15 @@ export default function CommunityPage() {
                           {user.role}
                         </Badge>
                       </CardTitle>
-                      <CardDescription>{user.email}</CardDescription>
+                        <CardDescription>{user.email}</CardDescription>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
+                  </CardHeader>
+                  <CardContent>
                   <p className="text-sm text-muted-foreground mb-4">
                     {user.bio || "No bio provided."}
                   </p>
-                  <div className="space-y-2">
+                      <div className="space-y-2">
                     {user.steamId && (
                       <a 
                         href={`https://steamcommunity.com/profiles/${user.steamId}`}
@@ -141,8 +141,8 @@ export default function CommunityPage() {
                       >
                         <span className="text-[#171a21]">Steam</span>
                         Profile
-                      </a>
-                    )}
+                          </a>
+                        )}
                     {user.discordId && (
                       <a 
                         href={`https://discord.com/users/${user.discordId}`}
@@ -151,8 +151,8 @@ export default function CommunityPage() {
                         className="flex items-center gap-2 text-sm text-blue-500 hover:underline"
                       >
                         <span className="text-[#5865F2]">Discord</span>
-                      </a>
-                    )}
+                          </a>
+                        )}
                     {user.twitchId && (
                       <a 
                         href={`https://twitch.tv/${user.twitchId}`}
@@ -172,20 +172,20 @@ export default function CommunityPage() {
                         className="flex items-center gap-2 text-sm text-blue-500 hover:underline"
                       >
                         {link.platform}
-                      </a>
+                          </a>
                     ))}
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Link href={`/profile/${user.id}`} className="w-full">
-                    <Button variant="outline" className="w-full">View Profile</Button>
-                  </Link>
-                </CardFooter>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                      </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Link href={`/profile/${user.id}`} className="w-full">
+                      <Button variant="outline" className="w-full">View Profile</Button>
+                    </Link>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+                    </div>
+                  )}
     </div>
   );
 } 

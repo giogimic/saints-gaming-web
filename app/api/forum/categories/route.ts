@@ -1,52 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authOptions } from '@/lib/auth-config';
 import { v4 as uuidv4 } from 'uuid';
 import { ForumCategory } from '@/lib/types';
 import { getForumCategories, createForumCategory, updateForumCategory, deleteForumCategory } from '@/lib/db';
 import { hasPermission } from '@/lib/permissions';
+import { UserRole } from '@/lib/permissions';
+import { prisma } from '@/lib/prisma';
+import { z } from 'zod';
+
+const categorySchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  order: z.number().int().min(0).optional(),
+});
 
 // GET: List all categories
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const categoryId = searchParams.get('id');
-
-    const categories = await getForumCategories(categoryId || undefined);
+    const categories = await prisma.category.findMany({
+      orderBy: { order: 'asc' },
+      include: {
+        _count: {
+          select: { threads: true }
+        }
+      }
+    });
     return NextResponse.json(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);
-    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch categories' },
+      { status: 500 }
+    );
   }
 }
 
 // POST: Create a new category
 export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session || !hasPermission(session.user.role as UserRole, 'manage:categories')) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const body = await request.json();
+    const validatedData = categorySchema.parse(body);
 
-    const { name, description, order } = await request.json();
-    if (!name || !description || order === undefined) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
+    const category = await prisma.category.create({
+      data: {
+        ...validatedData,
+        slug: validatedData.name.toLowerCase().replace(/\s+/g, '-'),
+      },
+    });
 
-    const category: ForumCategory = {
-      id: crypto.randomUUID(),
-      name,
-      description,
-      order,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    await createForumCategory(category);
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: error.errors },
+        { status: 400 }
+      );
+    }
     console.error('Error creating category:', error);
-    return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to create category' },
+      { status: 500 }
+    );
   }
 }
 

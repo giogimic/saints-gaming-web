@@ -3,24 +3,93 @@ import { getUsers, getUserById, updateUser, deleteUser } from '@/lib/db';
 import { hasPermission, UserRole } from '@/lib/permissions';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
 // GET: List all users (admin only)
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    if (!hasPermission(session.user.role as UserRole, 'manage:users')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    if (!session || session.user.role !== UserRole.ADMIN) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const users = await getUsers();
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        steamId: true,
+        discordId: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
     return NextResponse.json(users);
   } catch (error) {
-    console.error('Error fetching users:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("[USERS_GET]", error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
+// POST: Create a new user (admin only)
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || session.user.role !== UserRole.ADMIN) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const body = await req.json();
+    const { name, email, password, role, steamId, discordId } = body;
+
+    if (!name || !email || !password || !role) {
+      return new NextResponse("Missing required fields", { status: 400 });
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return new NextResponse("User already exists", { status: 400 });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role,
+        steamId,
+        discordId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        steamId: true,
+        discordId: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json(user);
+  } catch (error) {
+    console.error("[USERS_POST]", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 }
 

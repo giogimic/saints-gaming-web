@@ -1,72 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
-import { prisma } from '@/lib/db';
-import { hasPermission, UserRole } from '@/lib/permissions';
-import { v4 as uuidv4 } from 'uuid';
+import { prisma } from '@/lib/prisma';
+import { handleApiError, requireRole } from '@/lib/api-utils';
+import { z } from 'zod';
+
+const categorySchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+  slug: z.string().min(1).max(100),
+  order: z.number().optional(),
+  isDefault: z.boolean().optional(),
+});
+
+const updateCategorySchema = categorySchema.extend({
+  id: z.string(),
+});
 
 // GET: List all categories
 export async function GET() {
   try {
     const categories = await prisma.category.findMany({
-      orderBy: { order: 'asc' }
+      orderBy: { order: 'asc' },
     });
     return NextResponse.json(categories);
   } catch (error) {
-    console.error('Error fetching categories:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch categories' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }
 
 // POST: Create a new category (admin/moderator only)
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!hasPermission(session.user.role as UserRole, 'manage:categories')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const { name, description } = await req.json();
-
-    if (!name) {
-      return NextResponse.json(
-        { error: 'Category name is required' },
-        { status: 400 }
-      );
-    }
-
-    // Get current categories to determine order
-    const categories = await prisma.category.findMany({
-      orderBy: { order: 'desc' },
-      take: 1
-    });
-    const maxOrder = categories[0]?.order ?? 0;
+    const session = await requireRole(['admin']);
+    const data = await req.json();
+    const validatedData = categorySchema.parse(data);
 
     const category = await prisma.category.create({
-      data: {
-        id: uuidv4(),
-        name,
-        description: description || '',
-        order: maxOrder + 1,
-        isDefault: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
+      data: validatedData,
+    });
+
+    return NextResponse.json(category, { status: 201 });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await requireRole(['admin']);
+    const data = await req.json();
+    const { id, ...updateData } = updateCategorySchema.parse(data);
+
+    const category = await prisma.category.update({
+      where: { id },
+      data: updateData,
     });
 
     return NextResponse.json(category);
   } catch (error) {
-    console.error('Error creating category:', error);
-    return NextResponse.json(
-      { error: 'Failed to create category' },
-      { status: 500 }
-    );
+    return handleApiError(error);
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await requireRole(['admin']);
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      throw new Error('Category ID is required');
+    }
+
+    await prisma.category.delete({
+      where: { id },
+    });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    return handleApiError(error);
   }
 } 

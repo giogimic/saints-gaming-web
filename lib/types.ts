@@ -1,5 +1,29 @@
 import { UserRole } from './permissions';
 
+declare module "next-auth" {
+  interface User {
+    id: string;
+    name: string;
+    email: string;
+    role: UserRole;
+    steamId?: string;
+  }
+
+  interface Session {
+    user: User;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    name: string;
+    email: string;
+    role: UserRole;
+    steamId?: string;
+  }
+}
+
 export interface UserSettings {
   theme: "light" | "dark" | "system";
   notifications: boolean;
@@ -21,16 +45,13 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  createdAt: string;
-  updatedAt: string;
-  emailVerified: string;
-  password: string;
-  bio?: string;
-  avatar?: string;
   steamId?: string;
-  discordId?: string;
-  twitchId?: string;
-  lastLogin?: string;
+  password?: string;
+  emailVerified?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  lastLogin?: Date;
+  bio?: string;
   settings?: UserSettings;
   gamingProfile?: UserGamingProfile;
   socialLinks?: SocialLink[];

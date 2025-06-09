@@ -9,33 +9,31 @@ import Link from 'next/link';
 
 const games = [
   {
-    id: 'csgo',
-    name: 'Counter-Strike 2',
-    description: 'Join our competitive CS2 servers and tournaments',
-    image: '/games/cs2.jpg',
-    servers: [
-      { name: 'Competitive #1', players: '24/32', map: 'de_dust2' },
-      { name: 'Casual #1', players: '18/32', map: 'de_mirage' },
-    ],
-  },
-  {
     id: 'minecraft',
     name: 'Minecraft',
-    description: 'Build, explore, and survive in our Minecraft world',
+    description: 'Play our custom modpacks: Saints Gaming and Dimensional Cobblemon',
     image: '/games/minecraft.jpg',
     servers: [
-      { name: 'Survival', players: '45/100', map: 'World' },
-      { name: 'Creative', players: '12/50', map: 'Creative' },
+      { name: 'Saints Gaming', players: '45/100', map: 'World' },
+      { name: 'Dimensional Cobblemon', players: '12/50', map: 'World' },
     ],
   },
   {
-    id: 'rust',
-    name: 'Rust',
-    description: 'Survive and thrive in our Rust servers',
-    image: '/games/rust.jpg',
+    id: 'stardew',
+    name: 'Stardew Valley',
+    description: 'Play our Holy Crop! modpack with enhanced farming and automation',
+    image: '/games/stardew.jpg',
     servers: [
-      { name: 'Main Server', players: '98/150', map: 'Procedural' },
-      { name: 'PVE Server', players: '45/100', map: 'Procedural' },
+      { name: 'Holy Crop! Server', players: '4/4', map: 'Farm' },
+    ],
+  },
+  {
+    id: 'ark',
+    name: 'ARK: Survival Ascended',
+    description: 'Join our Omega modded server for enhanced survival gameplay',
+    image: '/games/ark.jpg',
+    servers: [
+      { name: 'Omega Server', players: '70/70', map: 'The Island' },
     ],
   },
 ];
