@@ -5,6 +5,7 @@ import SteamProvider from '@/lib/auth/steam-provider';
 import { createUser, getUsers, getUserByEmail, updateUser, getUserBySteamId } from '@/lib/db';
 import { compare, hash } from 'bcryptjs';
 import { UserRole } from '@/lib/types';
+import { saveUser } from '@/lib/storage';
 
 interface SteamProfile {
   steamid: string;
@@ -44,35 +45,8 @@ export const authOptions: AuthOptions = {
       },
     }),
     SteamProvider({
-      clientId: process.env.STEAM_CLIENT_ID || '',
-      clientSecret: process.env.STEAM_API_KEY || '',
-      async profile(profile) {
-        const steamId = profile.steamid;
-        let user = await getUserBySteamId(steamId);
-
-        if (!user) {
-          // Create new user from Steam profile
-          user = {
-            id: steamId,
-            email: `${steamId}@steam.user`,
-            name: profile.personaname,
-            role: 'user',
-            steamId: steamId,
-            avatar: profile.avatarfull,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          await createUser(user);
-        }
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.avatar,
-          role: user.role
-        };
-      }
+      clientSecret: process.env.STEAM_SECRET!,
+      callbackUrl: `${process.env.NEXTAUTH_URL}/api/auth/callback/steam`,
     }),
   ],
   callbacks: {
@@ -147,6 +121,23 @@ export const authOptions: AuthOptions = {
         } catch (error) {
           console.error('Credentials sign in error:', error);
           return false;
+        }
+      }
+
+      if (account?.provider === 'steam' && user.email) {
+        const existingUser = await getUserByEmail(user.email);
+        if (!existingUser) {
+          // Create new user
+          const newUser = {
+            id: user.id,
+            email: user.email,
+            name: user.name || 'Anonymous',
+            role: UserRole.MEMBER,
+            emailVerified: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          await saveUser(newUser);
         }
       }
 

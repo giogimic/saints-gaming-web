@@ -11,16 +11,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Edit, Users, List, LayoutDashboard, X, Settings, Shield } from "lucide-react";
+import { Edit, Users, List, LayoutDashboard, X, Settings, Shield, FileText, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { UserRole } from "@/lib/permissions";
+import { UserRole, hasPermission } from "@/lib/permissions";
 
 export function AdminToolbar() {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
 
-  if (!session?.user || session.user.role !== UserRole.ADMIN) return null;
+  if (!session?.user || !hasPermission(session.user.role as UserRole, 'manage:settings')) return null;
 
   return (
     <div className={cn(
@@ -30,6 +30,8 @@ export function AdminToolbar() {
       <div className="flex items-center gap-4">
         <LayoutDashboard className="h-6 w-6" />
         <span className="font-bold text-lg">Admin Toolbar</span>
+        
+        {/* Content Management */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10">
@@ -38,28 +40,57 @@ export function AdminToolbar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuLabel>Content Management</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href="/admin/posts">Manage Posts</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/admin/categories">Manage Categories</Link>
-            </DropdownMenuItem>
+            {hasPermission(session.user.role as UserRole, 'manage:posts') && (
+              <DropdownMenuItem asChild>
+                <Link href="/admin/posts">
+                  <FileText className="h-4 w-4 mr-2" /> Manage Posts
+                </Link>
+              </DropdownMenuItem>
+            )}
+            {hasPermission(session.user.role as UserRole, 'manage:categories') && (
+              <DropdownMenuItem asChild>
+                <Link href="/admin/categories">
+                  <Tag className="h-4 w-4 mr-2" /> Manage Categories
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/admin/settings">Site Settings</Link>
-            </DropdownMenuItem>
+            {hasPermission(session.user.role as UserRole, 'manage:settings') && (
+              <DropdownMenuItem asChild>
+                <Link href="/admin/settings">
+                  <Settings className="h-4 w-4 mr-2" /> Site Settings
+                </Link>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button asChild variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10">
-          <Link href="/admin/users">
-            <Users className="h-4 w-4 mr-1" /> Manage Users
-          </Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10">
-          <Link href="/admin/roles">
-            <Shield className="h-4 w-4 mr-1" /> Manage Roles
-          </Link>
-        </Button>
+
+        {/* User Management */}
+        {hasPermission(session.user.role as UserRole, 'manage:users') && (
+          <Button asChild variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10">
+            <Link href="/admin/users">
+              <Users className="h-4 w-4 mr-1" /> Manage Users
+            </Link>
+          </Button>
+        )}
+
+        {/* Role Management */}
+        {hasPermission(session.user.role as UserRole, 'manage:roles') && (
+          <Button asChild variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10">
+            <Link href="/admin/roles">
+              <Shield className="h-4 w-4 mr-1" /> Manage Roles
+            </Link>
+          </Button>
+        )}
+
+        {/* Activity Log */}
+        {hasPermission(session.user.role as UserRole, 'manage:settings') && (
+          <Button asChild variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10">
+            <Link href="/admin/activity">
+              <List className="h-4 w-4 mr-1" /> Activity Log
+            </Link>
+          </Button>
+        )}
       </div>
       <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="text-primary-foreground hover:bg-primary-foreground/10">
         <X className="h-5 w-5" />

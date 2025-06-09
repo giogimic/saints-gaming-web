@@ -1,5 +1,6 @@
 import { User, ForumPost, ForumReply, ForumCategory, AuthSession, CookieConsent, PageContent, UserRole } from './types';
 import { compare, hash } from 'bcryptjs';
+import { prisma } from './db';
 
 // In-memory storage for development
 const storage = {
@@ -15,25 +16,26 @@ const storage = {
 
 // User operations
 export async function getUsers(): Promise<User[]> {
-  return storage.users;
+  return prisma.user.findMany();
 }
 
 export async function getUser(id: string): Promise<User | null> {
-  return storage.users.find(user => user.id === id) || null;
+  const user = await prisma.user.findUnique({
+    where: { id },
+  });
+  return user;
 }
 
 export async function createUser(user: User): Promise<void> {
   storage.users.push(user);
 }
 
-export async function saveUser(user: User): Promise<User> {
-  const existingUserIndex = storage.users.findIndex(u => u.id === user.id);
-  if (existingUserIndex >= 0) {
-    storage.users[existingUserIndex] = { ...storage.users[existingUserIndex], ...user };
-    return storage.users[existingUserIndex];
-  }
-  storage.users.push(user);
-  return user;
+export async function saveUser(user: User): Promise<void> {
+  await prisma.user.upsert({
+    where: { id: user.id },
+    update: user,
+    create: user,
+  });
 }
 
 export async function updateUser(id: string, updates: Partial<User>): Promise<void> {
@@ -191,7 +193,13 @@ export async function saveCategory(category: ForumCategory): Promise<void> {
 
 // Session operations
 export async function getSessions(): Promise<AuthSession[]> {
-  return storage.sessions;
+  const sessions = await prisma.session.findMany();
+  return sessions.map(session => ({
+    id: session.id,
+    userId: session.userId,
+    expiresAt: session.expires.toISOString(),
+    provider: 'database',
+  }));
 }
 
 export async function createSession(session: AuthSession): Promise<void> {
@@ -199,12 +207,14 @@ export async function createSession(session: AuthSession): Promise<void> {
 }
 
 export async function saveSession(session: AuthSession): Promise<void> {
-  const index = storage.sessions.findIndex(s => s.id === session.id);
-  if (index >= 0) {
-    storage.sessions[index] = session;
-  } else {
-    storage.sessions.push(session);
-  }
+  await prisma.session.create({
+    data: {
+      id: session.id,
+      userId: session.userId,
+      expires: new Date(session.expiresAt),
+      sessionToken: session.id,
+    },
+  });
 }
 
 export async function deleteSession(id: string): Promise<void> {

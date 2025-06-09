@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { getCategoryById, updateCategory, deleteCategory } from '@/lib/db';
-import { hasPermission } from '@/lib/permissions';
+import { authOptions } from '../../auth/[...nextauth]/route';
+import { prisma } from '@/lib/db';
+import { hasPermission, UserRole } from '@/lib/permissions';
 
 // PATCH: Update a category
 export async function PATCH(
@@ -15,11 +15,14 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!hasPermission(session.user.role, 'manage:categories')) {
+    if (!hasPermission(session.user.role as UserRole, 'manage:categories')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const category = await getCategoryById(params.id);
+    const category = await prisma.category.findUnique({
+      where: { id: params.id }
+    });
+
     if (!category) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
@@ -33,10 +36,12 @@ export async function PATCH(
     }
 
     const updates = await request.json();
-    const updatedCategory = await updateCategory({
-      ...category,
-      ...updates,
-      updatedAt: new Date().toISOString()
+    const updatedCategory = await prisma.category.update({
+      where: { id: params.id },
+      data: {
+        ...updates,
+        updatedAt: new Date()
+      }
     });
 
     return NextResponse.json(updatedCategory);
@@ -60,11 +65,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!hasPermission(session.user.role, 'manage:categories')) {
+    if (!hasPermission(session.user.role as UserRole, 'manage:categories')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const category = await getCategoryById(params.id);
+    const category = await prisma.category.findUnique({
+      where: { id: params.id }
+    });
+
     if (!category) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
@@ -77,7 +85,10 @@ export async function DELETE(
       );
     }
 
-    await deleteCategory(params.id);
+    await prisma.category.delete({
+      where: { id: params.id }
+    });
+
     return NextResponse.json({ message: 'Category deleted successfully' });
   } catch (error) {
     console.error('Error deleting category:', error);

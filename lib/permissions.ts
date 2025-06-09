@@ -1,18 +1,20 @@
 export enum UserRole {
   ADMIN = 'admin',
   MODERATOR = 'moderator',
-  MEMBER = 'member'
+  MEMBER = 'member',
+  USER = 'user'
 }
 
 // Define the role hierarchy (higher number = higher authority)
-const roleHierarchy: Record<UserRole, number> = {
-  [UserRole.ADMIN]: 3,
-  [UserRole.MODERATOR]: 2,
-  [UserRole.MEMBER]: 1,
+export const ROLE_HIERARCHY: Record<UserRole, number> = {
+  [UserRole.ADMIN]: 4,
+  [UserRole.MODERATOR]: 3,
+  [UserRole.MEMBER]: 2,
+  [UserRole.USER]: 1
 };
 
 // Define permissions for each role
-const rolePermissions: Record<UserRole, string[]> = {
+export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   [UserRole.ADMIN]: [
     'view:forum',
     'create:post',
@@ -33,7 +35,6 @@ const rolePermissions: Record<UserRole, string[]> = {
     'vote:post',
     'manage:posts',
     'manage:categories',
-    'manage:users',
   ],
   [UserRole.MEMBER]: [
     'view:forum',
@@ -42,52 +43,44 @@ const rolePermissions: Record<UserRole, string[]> = {
     'delete:own-post',
     'vote:post',
   ],
+  [UserRole.USER]: [
+    'view:forum',
+    'vote:post',
+  ],
 };
 
 export const DEFAULT_ADMIN_EMAIL = 'matthewatoope@gmail.com';
 
-export const PERMISSIONS = {
-  'manage:users': [UserRole.ADMIN],
-  'manage:categories': [UserRole.ADMIN, UserRole.MODERATOR],
-  'manage:posts': [UserRole.ADMIN, UserRole.MODERATOR],
-  'create:post': [UserRole.ADMIN, UserRole.MODERATOR, UserRole.MEMBER],
-  'delete:own_post': [UserRole.ADMIN, UserRole.MODERATOR, UserRole.MEMBER],
-  'edit:own_post': [UserRole.ADMIN, UserRole.MODERATOR, UserRole.MEMBER],
-  'delete:any_post': [UserRole.ADMIN, UserRole.MODERATOR],
-  'edit:any_post': [UserRole.ADMIN, UserRole.MODERATOR],
-} as const;
-
-export type Permission = keyof typeof PERMISSIONS;
+export type Permission = 
+  | 'view:forum'
+  | 'create:post'
+  | 'edit:own-post'
+  | 'delete:own-post'
+  | 'vote:post'
+  | 'manage:posts'
+  | 'manage:categories'
+  | 'manage:users'
+  | 'manage:roles'
+  | 'manage:settings';
 
 /**
  * Check if a user role has a specific permission
  */
-export function hasPermission(userRole: UserRole, permission: Permission | string): boolean {
+export function hasPermission(userRole: UserRole, permission: Permission): boolean {
   if (!userRole || !permission) return false;
 
   // Always grant admin permissions to the default admin email
   if (userRole === UserRole.ADMIN) return true;
 
-  // Check if the permission is in our defined permissions
-  if (permission in PERMISSIONS) {
-    const allowedRoles = PERMISSIONS[permission as Permission];
-    return allowedRoles.includes(userRole);
-  }
-
-  // For dynamic permissions (like edit:own-post)
-  const [action, scope] = permission.split(':');
-  if (action === 'edit' && scope?.startsWith('own-')) {
-    return [UserRole.ADMIN, UserRole.MODERATOR, UserRole.MEMBER].includes(userRole);
-  }
-
-  return false;
+  // Check if the permission is in the role's permissions
+  return ROLE_PERMISSIONS[userRole]?.includes(permission) || false;
 }
 
 /**
  * Check if a user role has a higher or equal role in the hierarchy
  */
 export function hasHigherRole(userRole: UserRole, requiredRole: UserRole): boolean {
-  return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
+  return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
 }
 
 /**
@@ -101,7 +94,7 @@ export function canEditUser(currentRole: UserRole, targetRole: UserRole): boolea
  * Check if a user can edit their own content
  */
 export function canEditOwnContent(userRole: UserRole, contentType: string): boolean {
-  return hasPermission(userRole, `edit:own-${contentType}`);
+  return hasPermission(userRole, `edit:own-${contentType}` as Permission);
 }
 
 export const DEFAULT_CATEGORIES = [

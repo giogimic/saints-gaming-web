@@ -13,6 +13,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("user")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  posts         Post[]
+  replies       Reply[]
+  settings      UserSettings?
+  gamingProfile UserGamingProfile?
+  socialLinks   SocialLink[]
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -40,31 +58,6 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model User {
-  id            String    @id @default(uuid())
-  name          String
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          String    @default("member")
-  bio           String?
-  avatar        String?
-  steamId       String?
-  discordId     String?
-  twitchId      String?
-  lastLogin     DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  accounts      Account[]
-  sessions      Session[]
-  settings      UserSettings?
-  gamingProfile UserGamingProfile?
-  socialLinks   SocialLink[]
-  posts         ForumPost[]
-  replies       ForumReply[]
-}
-
 model VerificationToken {
   identifier String
   token      String   @unique
@@ -74,82 +67,73 @@ model VerificationToken {
 }
 
 model UserSettings {
-  id                String  @id @default(uuid())
-  userId           String  @unique
-  theme            String  @default("light")
-  notifications    Boolean @default(true)
-  language         String  @default("en")
-  timezone         String  @default("UTC")
+  id                String   @id @default(cuid())
+  userId           String   @unique
+  theme            String   @default("system")
+  notifications    Boolean  @default(true)
+  language         String   @default("en")
+  timezone         String   @default("UTC")
   emailNotifications Boolean @default(true)
-  darkMode         Boolean @default(false)
-  showOnlineStatus Boolean @default(true)
-  user             User    @relation(fields: [userId], references: [id])
+  darkMode         Boolean  @default(false)
+  showOnlineStatus Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model UserGamingProfile {
-  id              String  @id @default(uuid())
-  userId          String  @unique
-  steamId         String?
-  discordUsername String?
-  favoriteGames   String  @default("[]")
-  gamingSetup     String  @default("{}")
-  gamingPreferences String @default("{}")
-  user            User    @relation(fields: [userId], references: [id])
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  favoriteGames    String   @default("[]")
+  gamingSetup      String   @default("[]")
+  gamingPreferences String  @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model SocialLink {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   userId    String
   platform  String
   url       String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model ForumCategory {
-  id          String      @id @default(uuid())
+model Category {
+  id          String   @id @default(cuid())
   name        String
   description String?
-  order       Int         @default(0)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  posts       ForumPost[]
+  order       Int      @default(0)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  posts       Post[]
 }
 
-model ForumPost {
-  id          String        @id @default(uuid())
-  title       String
-  content     String
-  authorId    String
-  categoryId  String
-  isPinned    Boolean       @default(false)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  author      User          @relation(fields: [authorId], references: [id])
-  category    ForumCategory @relation(fields: [categoryId], references: [id])
-  replies     ForumReply[]
-  votes       PostVote[]
+model Post {
+  id         String    @id @default(cuid())
+  title      String
+  content    String
+  published  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  authorId   String
+  categoryId String
+  author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  replies    Reply[]
 }
 
-model ForumReply {
-  id        String    @id @default(uuid())
+model Reply {
+  id        String   @id @default(cuid())
   content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   authorId  String
   postId    String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  author    User      @relation(fields: [authorId], references: [id])
-  post      ForumPost @relation(fields: [postId], references: [id])
-}
-
-model PostVote {
-  id        String    @id @default(uuid())
-  postId    String
-  userId    String
-  value     Int
-  createdAt DateTime  @default(now())
-  post      ForumPost @relation(fields: [postId], references: [id])
-
-  @@unique([postId, userId])
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 }

@@ -39,18 +39,22 @@ export interface GamingUrls {
 export interface User {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
+  image?: string;
   role: UserRole;
+  emailVerified?: string;
   createdAt: string;
   updatedAt: string;
-  emailVerified: string;
-  password?: string;
-  bio?: string;
-  avatar?: string;
-  steamId?: string;
-  discordId?: string;
-  twitchId?: string;
   lastLogin?: string;
+  preferences?: {
+    theme: string;
+    notifications: boolean;
+  };
+  username?: string;
+  avatar?: string;
+  discordId?: string;
+  posts?: number;
+  reputation?: number;
   settings?: UserSettings;
   gamingProfile?: UserGamingProfile;
   gamingUrls?: GamingUrls;
@@ -146,9 +150,8 @@ export interface UserPermission {
 export interface AuthSession {
   id: string;
   userId: string;
-  provider: string;
-  createdAt: string;
   expiresAt: string;
+  provider: string;
 }
 
 export interface CookieConsent {
@@ -177,6 +180,18 @@ export interface SteamStats {
     name: string;
     appid: number;
   };
+}
+
+export interface SteamProfile {
+  steamid: string;
+  personaname: string;
+  avatarfull: string;
+}
+
+export interface DiscordProfile {
+  id: string;
+  username: string;
+  avatar: string;
 }
 
 export const ROLE_WEIGHTS: Record<UserRole, number> = {

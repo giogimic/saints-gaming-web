@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { getCategories, createCategory } from '@/lib/db';
-import { hasPermission } from '@/lib/permissions';
+import { authOptions } from '../auth/[...nextauth]/route';
+import { prisma } from '@/lib/db';
+import { hasPermission, UserRole } from '@/lib/permissions';
 import { v4 as uuidv4 } from 'uuid';
 
 // GET: List all categories
 export async function GET() {
   try {
-    const categories = await getCategories();
+    const categories = await prisma.category.findMany({
+      orderBy: { order: 'asc' }
+    });
     return NextResponse.json(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -27,7 +29,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!hasPermission(session.user.role, 'manage:categories')) {
+    if (!hasPermission(session.user.role as UserRole, 'manage:categories')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -41,17 +43,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Get current categories to determine order
-    const categories = await getCategories();
-    const maxOrder = Math.max(...categories.map(c => c.order), 0);
+    const categories = await prisma.category.findMany({
+      orderBy: { order: 'desc' },
+      take: 1
+    });
+    const maxOrder = categories[0]?.order ?? 0;
 
-    const category = await createCategory({
-      id: uuidv4(),
-      name,
-      description: description || '',
-      order: maxOrder + 1,
-      isDefault: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    const category = await prisma.category.create({
+      data: {
+        id: uuidv4(),
+        name,
+        description: description || '',
+        order: maxOrder + 1,
+        isDefault: false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
     });
 
     return NextResponse.json(category);
