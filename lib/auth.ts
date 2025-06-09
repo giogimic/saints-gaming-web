@@ -1,6 +1,9 @@
 import { User, AuthSession, UserRole } from './types';
 import { saveUser, saveSession, getUsers, getSessions, getUser } from './storage';
 import { randomUUID } from 'crypto';
+import { AuthOptions } from 'next-auth';
+import SteamProvider from 'next-auth-steam';
+import { getUserByEmail } from '@/lib/db';
 
 // Steam authentication
 export async function authenticateSteam(steamId: string, profile: any): Promise<User> {
@@ -109,4 +112,48 @@ export function hasPermission(userRole: string, requiredRole: string): boolean {
 
   return roleHierarchy[userRole as keyof typeof roleHierarchy] >= 
          roleHierarchy[requiredRole as keyof typeof roleHierarchy];
-} 
+}
+
+export const authOptions: AuthOptions = {
+  providers: [
+    SteamProvider({
+      clientSecret: process.env.STEAM_SECRET!,
+      callbackUrl: `${process.env.NEXTAUTH_URL}/api/auth/callback/steam`,
+    }),
+  ],
+  callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === 'steam' && user.email) {
+        const existingUser = await getUserByEmail(user.email);
+        if (!existingUser) {
+          // Create new user
+          const newUser: User = {
+            id: user.id,
+            email: user.email,
+            name: user.name || 'Anonymous',
+            role: UserRole.MEMBER,
+            emailVerified: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          await saveUser(newUser);
+        }
+      }
+      return true;
+    },
+    async session({ session, token }) {
+      if (session.user?.email) {
+        const user = await getUserByEmail(session.user.email);
+        if (user) {
+          session.user.id = user.id;
+          session.user.role = user.role;
+        }
+      }
+      return session;
+    },
+  },
+  pages: {
+    signIn: '/auth/signin',
+    error: '/auth/error',
+  },
+}; 

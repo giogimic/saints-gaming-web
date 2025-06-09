@@ -2,9 +2,10 @@ import NextAuth from 'next-auth';
 import { AuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import SteamProvider from '@/lib/auth/steam-provider';
-import { saveUser } from '@/lib/storage';
-import { compare } from 'bcryptjs';
+import { saveUser, getUsers } from '@/lib/storage';
+import { compare, hash } from 'bcryptjs';
 import { getUserByEmail } from '@/lib/storage';
+import { UserRole } from '@/lib/types';
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -46,29 +47,102 @@ export const authOptions: AuthOptions = {
     async signIn({ user, account, profile }) {
       if (account?.provider === 'steam') {
         try {
-          const steamId = profile?.steamid || user.id;
-          await saveUser({
-            id: steamId,
-            name: user.name || '',
-            email: user.email,
-            image: user.image,
-            role: 'user',
+          // Get Steam ID from profile
+          const steamId = profile?.steamid;
+          if (!steamId) return false;
+
+          // Check if user exists
+          const users = await getUsers();
+          const existingUser = users.find(u => u.steamId === steamId);
+
+          if (existingUser) {
+            // Update last login
+            await saveUser({
+              ...existingUser,
+              lastLogin: new Date().toISOString()
+            });
+            return true;
+          }
+
+          // Create new user
+          const newUser = {
+            id: crypto.randomUUID(),
+            name: profile?.personaname || 'Steam User',
+            email: `${steamId}@steam.local`,
+            steamId,
+            role: 'member' as UserRole,
             emailVerified: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-          });
+            lastLogin: new Date().toISOString(),
+            bio: '',
+            gamingUrls: {
+              steam: '',
+              discord: '',
+              twitch: ''
+            }
+          };
+
+          await saveUser(newUser);
           return true;
         } catch (error) {
-          console.error('Error saving user:', error);
+          console.error('Steam sign in error:', error);
           return false;
         }
       }
+
+      // Handle credentials provider
+      if (account?.provider === 'credentials') {
+        try {
+          const users = await getUsers();
+          const existingUser = users.find(u => u.email === user.email);
+
+          if (existingUser) {
+            // Update last login
+            await saveUser({
+              ...existingUser,
+              lastLogin: new Date().toISOString()
+            });
+            return true;
+          }
+
+          // Create new user
+          const newUser = {
+            id: crypto.randomUUID(),
+            name: user.name || 'User',
+            email: user.email!,
+            role: (user.email === 'matthewatoope@gmail.com' ? 'admin' : 'member') as UserRole,
+            emailVerified: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+            bio: '',
+            gamingUrls: {
+              steam: '',
+              discord: '',
+              twitch: ''
+            }
+          };
+
+          await saveUser(newUser);
+          return true;
+        } catch (error) {
+          console.error('Credentials sign in error:', error);
+          return false;
+        }
+      }
+
       return true;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.sub;
-        session.user.role = token.role as string;
+        const users = await getUsers();
+        const user = users.find(u => u.email === session.user.email);
+        if (user) {
+          session.user.id = user.id;
+          session.user.role = user.role;
+          session.user.steamId = user.steamId;
+        }
       }
       return session;
     },

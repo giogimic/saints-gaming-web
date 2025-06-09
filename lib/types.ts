@@ -1,16 +1,50 @@
-export type UserRole = 'user' | 'admin' | 'moderator';
+export enum UserRole {
+  ADMIN = 'admin',
+  MODERATOR = 'moderator',
+  MEMBER = 'member',
+  USER = 'user'
+}
+
+export interface UserSettings {
+  theme: "light" | "dark" | "system";
+  notifications: boolean;
+  language: string;
+  timezone: string;
+  emailNotifications: boolean;
+  darkMode: boolean;
+  showOnlineStatus: boolean;
+}
+
+export interface UserGamingProfile {
+  favoriteGames: string[];
+  gamingSetup: {
+    pc?: {
+      cpu: string;
+      gpu: string;
+    };
+    console?: {
+      type: string;
+      model: string;
+    };
+  };
+  gamingPreferences: {
+    favoriteGenres: string[];
+    playStyle: string[];
+    multiplayer: boolean;
+    competitive: boolean;
+  };
+}
 
 export interface User {
   id: string;
   email: string;
-  password?: string;
   name: string;
   role: UserRole;
-  image?: string;
-  emailVerified: boolean;
-  verificationToken?: string;
+  emailVerified: string;
   createdAt: string;
   updatedAt: string;
+  settings?: UserSettings;
+  gamingProfile?: UserGamingProfile;
 }
 
 export interface ForumCategory {
@@ -18,34 +52,28 @@ export interface ForumCategory {
   name: string;
   description: string;
   order: number;
-  posts: ForumPost[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ForumPost {
   id: string;
-  categoryId: string;
   title: string;
   content: string;
   authorId: string;
+  categoryId: string;
+  isPinned: boolean;
   createdAt: string;
   updatedAt: string;
-  isEdited: boolean;
-  likes: number;
-  isSolution: boolean;
 }
 
 export interface ForumReply {
   id: string;
-  postId: string;
   content: string;
   authorId: string;
+  postId: string;
   createdAt: string;
   updatedAt: string;
-  isEdited: boolean;
-  likes: number;
-  isSolution: boolean;
 }
 
 export interface PageContent {
@@ -84,13 +112,13 @@ export interface CookieConsent {
 }
 
 export const ROLE_WEIGHTS: Record<UserRole, number> = {
-  user: 0,
+  member: 0,
   moderator: 1,
   admin: 2,
 };
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  user: ['read:posts', 'create:posts', 'edit:own:posts', 'delete:own:posts'],
+  member: ['read:posts', 'create:posts', 'edit:own:posts', 'delete:own:posts'],
   moderator: ['read:posts', 'create:posts', 'edit:posts', 'delete:posts', 'manage:categories'],
   admin: ['read:posts', 'create:posts', 'edit:posts', 'delete:posts', 'manage:categories', 'manage:users', 'manage:roles'],
 }; 

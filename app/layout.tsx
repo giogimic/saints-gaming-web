@@ -8,6 +8,7 @@ import { AuthProvider } from '@/components/auth-provider';
 import { CookieConsent } from '@/components/cookie-consent';
 import { AgeVerification } from '@/components/age-verification';
 import { GlobalErrorBoundary } from '@/components/global-error-boundary';
+import { AdminToolbar } from '@/components/admin-toolbar';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <GlobalErrorBoundary>
+            <AdminToolbar />
             <div className="flex min-h-screen flex-col">
               <MainNav />
               <main className="flex-1">

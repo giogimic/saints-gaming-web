@@ -1,48 +1,16 @@
-import { User, ForumPost, ForumCategory, AuthSession, CookieConsent, PageContent, UserRole } from './types';
+import { User, ForumPost, ForumReply, ForumCategory, AuthSession, CookieConsent, PageContent, UserRole } from './types';
+import { compare, hash } from 'bcryptjs';
 
 // In-memory storage for development
-let storage: {
-  users: User[];
-  posts: ForumPost[];
-  categories: ForumCategory[];
-  sessions: AuthSession[];
-  cookieConsents: CookieConsent[];
-  pages: PageContent[];
-} = {
-  users: [],
-  posts: [],
-  categories: [
-    {
-      id: '1',
-      name: 'General Discussion',
-      description: 'General topics and discussions',
-      order: 1,
-      posts: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      name: 'Game Announcements',
-      description: 'Latest news and updates about our games',
-      order: 2,
-      posts: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: '3',
-      name: 'Community Events',
-      description: 'Information about community events and tournaments',
-      order: 3,
-      posts: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-  ],
-  sessions: [],
-  cookieConsents: [],
-  pages: []
+const storage = {
+  users: [] as User[],
+  posts: [] as ForumPost[],
+  categories: [] as ForumCategory[],
+  replies: [] as ForumReply[],
+  settings: {} as Record<string, any>,
+  sessions: [] as AuthSession[],
+  cookieConsents: [] as CookieConsent[],
+  pages: [] as PageContent[],
 };
 
 // User operations
@@ -131,22 +99,63 @@ export async function updateUserRole(id: string, role: UserRole): Promise<User |
 
 // Forum operations
 export async function getPosts(): Promise<ForumPost[]> {
-  return storage.posts;
+  const posts = await getData<ForumPost[]>('posts') || [];
+  return posts;
 }
 
-export async function getPost(id: string): Promise<ForumPost | null> {
-  return storage.posts.find(post => post.id === id) || null;
+export async function getPostById(id: string): Promise<ForumPost | null> {
+  const posts = await getPosts();
+  return posts.find(post => post.id === id) || null;
 }
 
-export async function createPost(post: ForumPost): Promise<void> {
-  storage.posts.push(post);
-}
-
-export async function updatePost(id: string, updates: Partial<ForumPost>): Promise<void> {
-  const index = storage.posts.findIndex(post => post.id === id);
-  if (index !== -1) {
-    storage.posts[index] = { ...storage.posts[index], ...updates };
+export async function savePost(post: ForumPost): Promise<ForumPost> {
+  const posts = await getPosts();
+  const existingIndex = posts.findIndex(p => p.id === post.id);
+  
+  if (existingIndex >= 0) {
+    posts[existingIndex] = post;
+  } else {
+    posts.push(post);
   }
+  
+  await saveData('posts', posts);
+  return post;
+}
+
+export async function updatePost(id: string, updates: Partial<ForumPost>): Promise<ForumPost> {
+  const post = await getPostById(id);
+  if (!post) {
+    throw new Error('Post not found');
+  }
+  
+  const updatedPost = { ...post, ...updates };
+  return savePost(updatedPost);
+}
+
+export async function deletePost(id: string): Promise<boolean> {
+  const posts = await getPosts();
+  const filteredPosts = posts.filter(post => post.id !== id);
+  
+  if (filteredPosts.length === posts.length) {
+    return false;
+  }
+  
+  await saveData('posts', filteredPosts);
+  return true;
+}
+
+export async function getReplies(postId: string): Promise<ForumReply[]> {
+  return storage.replies.filter(reply => reply.postId === postId);
+}
+
+export async function saveReply(reply: ForumReply): Promise<ForumReply> {
+  const existingIndex = storage.replies.findIndex(r => r.id === reply.id);
+  if (existingIndex >= 0) {
+    storage.replies[existingIndex] = reply;
+  } else {
+    storage.replies.push(reply);
+  }
+  return reply;
 }
 
 // Category operations
@@ -170,21 +179,14 @@ export async function updateCategory(id: string, updates: Partial<ForumCategory>
 }
 
 export async function saveCategory(category: ForumCategory): Promise<void> {
-  try {
-    const categories = await getCategories();
-    const index = categories.findIndex(c => c.id === category.id);
-    
-    if (index === -1) {
-      categories.push(category);
-    } else {
-      categories[index] = category;
-    }
-    
-    localStorage.setItem('forum_categories', JSON.stringify(categories));
-  } catch (error) {
-    console.error('Error saving category:', error);
-    throw new Error('Failed to save category');
+  const categories = await getCategories();
+  const index = categories.findIndex(c => c.id === category.id);
+  if (index === -1) {
+    categories.push(category);
+  } else {
+    categories[index] = category;
   }
+  storage.categories = categories;
 }
 
 // Session operations
@@ -236,5 +238,24 @@ export async function updatePage(path: string, updates: Partial<PageContent>): P
   const index = storage.pages.findIndex(page => page.path === path);
   if (index !== -1) {
     storage.pages[index] = { ...storage.pages[index], ...updates };
+  }
+}
+
+// Data Storage Utilities
+async function getData<T>(key: keyof typeof storage): Promise<T | null> {
+  try {
+    return storage[key] as T;
+  } catch (error) {
+    console.error(`Error getting data for key ${key}:`, error);
+    return null;
+  }
+}
+
+async function saveData<T>(key: keyof typeof storage, data: T): Promise<void> {
+  try {
+    storage[key] = data as any;
+  } catch (error) {
+    console.error(`Error saving data for key ${key}:`, error);
+    throw error;
   }
 } 

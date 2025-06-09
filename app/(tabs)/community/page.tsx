@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,57 +8,93 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Users, MessageSquare, Trophy, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-
-const members = [
-  {
-    id: '1',
-    name: 'John Doe',
-    role: 'Admin',
-    avatar: '/avatars/john.jpg',
-    status: 'Online',
-    games: ['CS2', 'Minecraft'],
-    joinDate: '2023-01-15',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    role: 'Moderator',
-    avatar: '/avatars/jane.jpg',
-    status: 'Offline',
-    games: ['Rust', 'CS2'],
-    joinDate: '2023-02-20',
-  },
-  // Add more members as needed
-];
-
-const events = [
-  {
-    id: '1',
-    title: 'CS2 Tournament',
-    date: '2024-03-15',
-    time: '18:00 UTC',
-    participants: 32,
-    prize: '$1000',
-  },
-  {
-    id: '2',
-    title: 'Minecraft Building Contest',
-    date: '2024-03-20',
-    time: '15:00 UTC',
-    participants: 24,
-    prize: '$500',
-  },
-  // Add more events as needed
-];
+import type { Member, Event } from '@/types/community';
+import { toast } from '@/components/ui/use-toast';
+import { useRouter } from "next/navigation";
+import { User } from "@/lib/types";
+import md5 from "md5";
 
 export default function CommunityPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [members, setMembers] = useState<Member[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [membersRes, eventsRes] = await Promise.all([
+          fetch('/api/community/members'),
+          fetch('/api/community/events'),
+        ]);
+
+        if (!membersRes.ok || !eventsRes.ok) {
+          throw new Error('Failed to fetch data');
+        }
+
+        const [membersData, eventsData] = await Promise.all([
+          membersRes.json(),
+          eventsRes.json(),
+        ]);
+
+        setMembers(membersData);
+        setEvents(eventsData);
+      } catch (err) {
+        setError('Failed to load community data');
+        toast({
+          title: 'Error',
+          description: 'Failed to load community data. Please try again later.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/user');
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const data = await response.json();
+      setUsers(data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredMembers = members.filter(member =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.games.some(game => game.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-500 mb-4">{error}</h2>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -98,48 +134,49 @@ export default function CommunityPage() {
 
         <TabsContent value="members" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMembers.map((member) => (
-              <Card key={member.id}>
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={member.avatar}
-                      alt={member.name}
-                      className="w-12 h-12 rounded-full"
-                    />
-                    <div>
-                      <CardTitle>{member.name}</CardTitle>
-                      <CardDescription>{member.role}</CardDescription>
+            {users.map((user) => {
+              const gravatarUrl = `https://www.gravatar.com/avatar/${md5(user.email)}?d=identicon&s=200`;
+              return (
+                <Card key={user.id}>
+                  <CardHeader>
+                    <div className="flex items-center gap-4">
+                      <img src={gravatarUrl} alt={user.name} className="w-16 h-16 rounded-full" />
+                      <div>
+                        <CardTitle>{user.name}</CardTitle>
+                        <CardDescription>{user.email}</CardDescription>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className={`w-2 h-2 rounded-full ${
-                        member.status === 'Online' ? 'bg-green-500' : 'bg-gray-500'
-                      }`} />
-                      {member.status}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {member.games.map((game) => (
-                        <span
-                          key={game}
-                          className="px-2 py-1 bg-muted rounded-full text-sm"
-                        >
-                          {game}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button variant="outline" className="w-full" asChild>
-                    <Link href={`/profile/${member.id}`}>View Profile</Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">{user.bio || "No bio provided."}</p>
+                    {user.gamingUrls && (
+                      <div className="space-y-2">
+                        {user.gamingUrls.steam && (
+                          <a href={user.gamingUrls.steam} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline block">
+                            Steam Profile
+                          </a>
+                        )}
+                        {user.gamingUrls.discord && (
+                          <a href={user.gamingUrls.discord} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline block">
+                            Discord
+                          </a>
+                        )}
+                        {user.gamingUrls.twitch && (
+                          <a href={user.gamingUrls.twitch} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline block">
+                            Twitch
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                  <CardFooter>
+                    <Link href={`/profile/${user.id}`} className="w-full">
+                      <Button variant="outline" className="w-full">View Profile</Button>
+                    </Link>
+                  </CardFooter>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
 
@@ -154,16 +191,29 @@ export default function CommunityPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {event.description}
+                  </p>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4" />
-                      <span>{event.participants} participants</span>
+                      <span>{event.participants}/{event.maxParticipants} participants</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Trophy className="h-4 w-4" />
                       <span>{event.prize} prize pool</span>
                     </div>
                   </div>
+                  {event.rules && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium mb-2">Rules:</h4>
+                      <ul className="text-sm text-muted-foreground list-disc list-inside">
+                        {event.rules.map((rule, index) => (
+                          <li key={index}>{rule}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </CardContent>
                 <CardFooter>
                   <Button className="w-full" asChild>
@@ -191,7 +241,7 @@ export default function CommunityPage() {
             </CardContent>
             <CardFooter>
               <Button className="w-full" asChild>
-                <a href="https://discord.gg/saintsgaming" target="_blank" rel="noopener noreferrer">
+                <a href={process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || 'https://discord.gg/saintsgaming'} target="_blank" rel="noopener noreferrer">
                   Join Discord
                 </a>
               </Button>

@@ -6,6 +6,7 @@ declare module 'next-auth' {
   interface User {
     id: string;
     role: UserRole;
+    steamId?: string;
   }
 
   interface Session {
@@ -15,6 +16,7 @@ declare module 'next-auth' {
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      steamId?: string;
     };
   }
 }
@@ -22,5 +24,14 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT {
     role: UserRole;
+    steamId?: string;
+  }
+}
+
+declare module 'next-auth/providers/steam' {
+  interface Profile {
+    steamid: string;
+    personaname: string;
+    avatarfull: string;
   }
 } 

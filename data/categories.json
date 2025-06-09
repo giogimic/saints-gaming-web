@@ -1,1 +1,65 @@
- 
+[
+  {
+    "id": "announcements",
+    "name": "Announcements",
+    "description": "Important updates and announcements from the SaintsGaming team.",
+    "order": 0,
+    "posts": [],
+    "createdAt": "2024-03-08T00:00:00.000Z",
+    "updatedAt": "2024-03-08T00:00:00.000Z"
+  },
+  {
+    "id": "general",
+    "name": "General Discussion",
+    "description": "General gaming discussions and topics.",
+    "order": 1,
+    "posts": [],
+    "createdAt": "2024-03-08T00:00:00.000Z",
+    "updatedAt": "2024-03-08T00:00:00.000Z"
+  },
+  {
+    "id": "fps",
+    "name": "FPS Games",
+    "description": "Discussions about first-person shooter games.",
+    "order": 2,
+    "posts": [],
+    "createdAt": "2024-03-08T00:00:00.000Z",
+    "updatedAt": "2024-03-08T00:00:00.000Z"
+  },
+  {
+    "id": "rpg",
+    "name": "RPG Games",
+    "description": "Discussions about role-playing games.",
+    "order": 3,
+    "posts": [],
+    "createdAt": "2024-03-08T00:00:00.000Z",
+    "updatedAt": "2024-03-08T00:00:00.000Z"
+  },
+  {
+    "id": "strategy",
+    "name": "Strategy Games",
+    "description": "Discussions about strategy and simulation games.",
+    "order": 4,
+    "posts": [],
+    "createdAt": "2024-03-08T00:00:00.000Z",
+    "updatedAt": "2024-03-08T00:00:00.000Z"
+  },
+  {
+    "id": "indie",
+    "name": "Indie Games",
+    "description": "Discussions about indie and lesser-known games.",
+    "order": 5,
+    "posts": [],
+    "createdAt": "2024-03-08T00:00:00.000Z",
+    "updatedAt": "2024-03-08T00:00:00.000Z"
+  },
+  {
+    "id": "tech",
+    "name": "Gaming Tech",
+    "description": "Discussions about gaming hardware, software, and tech tips.",
+    "order": 6,
+    "posts": [],
+    "createdAt": "2024-03-08T00:00:00.000Z",
+    "updatedAt": "2024-03-08T00:00:00.000Z"
+  }
+] 

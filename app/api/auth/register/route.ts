@@ -2,49 +2,49 @@ import { NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
 import { saveUser } from '@/lib/storage';
 import { sendVerificationEmail } from '@/lib/email';
+import { v4 as uuidv4 } from 'uuid';
+import { getUsers } from '@/lib/storage';
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const { name, email, password } = await request.json();
 
-    // Validate input
-    if (!email || !password) {
+    if (!name || !email || !password) {
       return NextResponse.json(
-        { message: 'Email and password are required' },
+        { message: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Hash password
-    const hashedPassword = await hash(password, 12);
+    // Create new user with admin role for the first user
+    const users = await getUsers();
+    const isFirstUser = users.length === 0;
 
-    // Generate verification token
-    const verificationToken = crypto.randomUUID();
-
-    // Save user with verification token
     const user = await saveUser({
-      id: crypto.randomUUID(),
+      id: uuidv4(),
+      name,
       email,
-      password: hashedPassword,
-      name: email.split('@')[0], // Use email username as initial name
-      role: 'user',
+      password,
+      role: isFirstUser ? 'admin' : 'member',
       emailVerified: false,
-      verificationToken,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      bio: '',
+      gamingUrls: {
+        steam: '',
+        discord: '',
+        twitch: ''
+      }
     });
 
-    // Send verification email
-    await sendVerificationEmail(email, verificationToken);
-
     return NextResponse.json(
-      { message: 'Registration successful' },
+      { message: 'User registered successfully' },
       { status: 201 }
     );
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(
-      { message: 'Registration failed' },
+      { message: 'Failed to register user' },
       { status: 500 }
     );
   }
