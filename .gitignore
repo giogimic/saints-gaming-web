@@ -1,0 +1,55 @@
+# === Bun Artifacts ===
+.bun/
+bun.lock
+bun.lockb
+
+# === Node Modules ===
+node_modules/
+
+# === Build Output / Framework Generated ===
+.next/
+out/
+dist/
+.cache/
+
+# === Static / Public Cache ===
+*.log
+*.tmp
+*.temp
+*.bak
+
+# === Test and Coverage ===
+coverage/
+__tests__/
+*.test.*
+*.spec.*
+.nyc_output/
+
+# === TypeScript Build Artifacts ===
+*.tsbuildinfo
+
+# === Env Files ===
+.env
+.env.*
+!.env.example
+
+# === IDE / Editor / OS Junk ===
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.orig
+*.local
+
+# === Lockfiles (optional: comment out if source-controlled) ===
+pnpm-lock.yaml
+# yarn.lock
+# package-lock.json
+# bun.lockb
+
+# === Ignore PostCSS/Tailwind Cache ===
+.postcssrc
+tailwind.config.ts
+tailwind.config.js

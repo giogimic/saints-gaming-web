@@ -1,0 +1,29 @@
+[
+  {
+    "id": "home",
+    "path": "/",
+    "title": "Welcome to SaintsGaming",
+    "content": "<h1>Welcome to SaintsGaming</h1><p>Your ultimate gaming community. Join us for modded Minecraft, Stardew Valley, and more!</p>",
+    "lastEditedBy": "owner-1",
+    "lastEditedAt": "2024-03-08T00:00:00.000Z",
+    "minRoleToEdit": "admin"
+  },
+  {
+    "id": "about",
+    "path": "/about",
+    "title": "About SaintsGaming",
+    "content": "<h1>About SaintsGaming</h1><p>We are a community of gamers who love modded games and creating amazing experiences together.</p>",
+    "lastEditedBy": "owner-1",
+    "lastEditedAt": "2024-03-08T00:00:00.000Z",
+    "minRoleToEdit": "admin"
+  },
+  {
+    "id": "rules",
+    "path": "/rules",
+    "title": "Community Rules",
+    "content": "<h1>Community Rules</h1><p>1. Be respectful to all members<br>2. No spamming or advertising<br>3. Keep discussions on-topic<br>4. Follow the game-specific rules</p>",
+    "lastEditedBy": "owner-1",
+    "lastEditedAt": "2024-03-08T00:00:00.000Z",
+    "minRoleToEdit": "mod"
+  }
+] 
