@@ -1,6 +1,38 @@
 # Saints Gaming App
 
-A Next.js + shadcn/ui starter app with forum functionality.
+A modern Next.js + shadcn/ui application with forum functionality, built with cutting-edge UI components and animations.
+
+## Features
+
+- 🎮 Modern UI with glass-morphism and gradient effects
+- 🔐 Authentication (Email/Password, Steam)
+- 👤 User profiles with activity tracking
+- 💬 Forum system with categories and threads
+- ✍️ Rich text editor for posts
+- 💭 Nested comments
+- 🔍 Advanced search functionality
+- 📊 Admin dashboard
+- 📱 Responsive design
+- 🎨 Customizable themes
+- ⚡ Performance optimized
+- 🔄 Real-time updates
+- 🎯 Command palette navigation
+- 💫 Smooth animations and transitions
+
+## Tech Stack
+
+- Next.js 15 (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- Prisma (SQLite)
+- NextAuth.js
+- Framer Motion
+- TipTap (Rich Text Editor)
+- ProseMirror
+- Radix UI
+- Lucide Icons
 
 ## Getting Started
 
@@ -22,37 +54,12 @@ pnpm create-admin
 pnpm dev
 ```
 
-## Stack
-
-- Next.js 14 (App Router)
-- React 18
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
-- Prisma (SQLite)
-- NextAuth.js
-- TipTap (Rich Text Editor)
-- ProseMirror
-
-## Features
-
-- Authentication (Email/Password, Steam)
-- User profiles
-- Forum system with categories and threads
-- Rich text editor for posts
-- Nested comments
-- Search functionality
-- Recent activity feed
-- Admin dashboard
-- Responsive design
-
-## Additional Setup
-
-### Required UI Components
+## Required UI Components
 
 Install these shadcn/ui components:
 
 ```bash
+# Core components
 pnpm dlx shadcn-ui@latest add button
 pnpm dlx shadcn-ui@latest add input
 pnpm dlx shadcn-ui@latest add card
@@ -62,24 +69,31 @@ pnpm dlx shadcn-ui@latest add dropdown-menu
 pnpm dlx shadcn-ui@latest add toast
 pnpm dlx shadcn-ui@latest add alert-dialog
 pnpm dlx shadcn-ui@latest add select
+
+# Modern components
+pnpm dlx shadcn-ui@latest add hover-card
+pnpm dlx shadcn-ui@latest add command
+pnpm dlx shadcn-ui@latest add tooltip
 ```
 
-### Database Setup
-
-1. The database will be automatically initialized when you run `pnpm prisma db push`
-2. Create an admin user using `pnpm create-admin`
-3. The forum categories will be created automatically on first run
-
-### Rich Text Editor Setup
-
-The forum uses TipTap with ProseMirror for the rich text editor. Make sure you have all the required dependencies installed:
+## Additional Dependencies
 
 ```bash
+# UI and animations
+pnpm add framer-motion
+pnpm add @radix-ui/react-hover-card
+pnpm add @radix-ui/react-dialog
+pnpm add @radix-ui/react-tooltip
+pnpm add cmdk
+pnpm add class-variance-authority
+pnpm add tailwindcss-animate
+
+# Rich text editor
 pnpm add @tiptap/react @tiptap/starter-kit @tiptap/extension-link @tiptap/extension-image
 pnpm add prosemirror-adapter prosemirror-state prosemirror-view
 ```
 
-### Environment Variables
+## Environment Variables
 
 Required environment variables:
 
@@ -95,16 +109,17 @@ NEXTAUTH_SECRET="your-secret-key"
 STEAM_API_KEY="your-steam-api-key"
 ```
 
-## Deployment
+## Project Structure
 
-1. Build the application:
-```bash
-pnpm build
 ```
-
-2. Start the production server:
-```bash
-pnpm start
+├── app/                 # Next.js app directory
+├── components/         # React components
+│   ├── ui/            # UI components
+│   ├── forum/         # Forum components
+│   └── admin/         # Admin components
+├── lib/               # Utility functions
+├── prisma/            # Database schema
+└── public/            # Static assets
 ```
 
 ## Development
@@ -112,14 +127,16 @@ pnpm start
 - Run `pnpm dev` for development
 - Run `pnpm build` to create a production build
 - Run `pnpm start` to start the production server
+- Run `pnpm lint` to check for linting issues
+- Run `pnpm format` to format code
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a new Pull Request
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📝 License
 MIT
