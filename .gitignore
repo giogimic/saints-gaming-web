@@ -53,3 +53,5 @@ pnpm-lock.yaml
 .postcssrc
 tailwind.config.ts
 tailwind.config.js
+
+/generated/prisma

@@ -1,128 +1,124 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { signIn, useSession } from 'next-auth/react';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { toast } from '@/components/ui/use-toast';
 
-export default function SignIn() {
-  const { data: session } = useSession();
+export default function SignInPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const searchParams = useSearchParams();
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (session) {
-      router.push('/dashboard');
-    }
-  }, [session, router]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
+    setError('');
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
     try {
       const result = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
+        email,
+        password,
         redirect: false,
       });
 
       if (result?.error) {
-        throw new Error(result.error);
+        setError(result.error);
+      } else {
+        router.push('/dashboard');
       }
-
-      router.push('/dashboard');
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to sign in',
-        variant: 'destructive',
-      });
+    } catch (err) {
+      setError('An error occurred during sign in');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-        <div className="flex flex-col space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome to SaintsGaming
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Sign in to access the community features
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Sign in to your account
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Or{' '}
+            <Link href="/auth/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+              create a new account
+            </Link>
           </p>
         </div>
 
-        <div className="grid gap-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
+        {searchParams.get('message') && (
+          <div className="rounded-md bg-green-50 p-4">
+            <div className="text-sm text-green-700">
+              {searchParams.get('message')}
+            </div>
+          </div>
+        )}
+
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="email" className="sr-only">
+                Email address
+              </label>
+              <input
                 id="email"
+                name="email"
                 type="email"
-                placeholder="john@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                autoComplete="email"
                 required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Email address"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <input
                 id="password"
+                name="password"
                 type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                autoComplete="current-password"
                 required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Password"
               />
-            </div>
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign in'}
-            </Button>
-          </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            onClick={() => signIn('steam')}
-            className="flex items-center justify-center gap-2"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm0 1.8c5.6 0 10.2 4.6 10.2 10.2 0 5.6-4.6 10.2-10.2 10.2-5.6 0-10.2-4.6-10.2-10.2 0-5.6 4.6-10.2 10.2-10.2zm0 2.4c-4.3 0-7.8 3.5-7.8 7.8s3.5 7.8 7.8 7.8 7.8-3.5 7.8-7.8-3.5-7.8-7.8-7.8zm0 2.4c3 0 5.4 2.4 5.4 5.4s-2.4 5.4-5.4 5.4-5.4-2.4-5.4-5.4 2.4-5.4 5.4-5.4z" />
-            </svg>
-            Sign in with Steam
-          </Button>
-        </div>
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <Link
+                href="/auth/reset-password"
+                className="font-medium text-indigo-600 hover:text-indigo-500"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+          </div>
 
-        <div className="text-center text-sm text-muted-foreground">
-          <p>Don't have an account?</p>
-          <Link href="/auth/register" className="text-primary hover:underline">
-            Create an account
-          </Link>
-        </div>
+          {error && (
+            <div className="text-red-500 text-sm text-center">{error}</div>
+          )}
+
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            >
+              {loading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

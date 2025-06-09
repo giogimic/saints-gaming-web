@@ -10,6 +10,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { hasPermission } from "@/lib/permissions";
 
+interface SocialLink {
+  platform: string;
+  url: string;
+}
+
 export default function ProfilePage() {
   const { data: session, update } = useSession();
   const router = useRouter();
@@ -20,6 +25,7 @@ export default function ProfilePage() {
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
+    socialLinks: [] as SocialLink[]
   });
 
   useEffect(() => {
@@ -29,6 +35,26 @@ export default function ProfilePage() {
         name: session.user.name || "",
         email: session.user.email || "",
       }));
+
+      // Fetch user profile data including social links
+      fetch("/api/user/profile")
+        .then(res => res.json())
+        .then(data => {
+          if (data.socialLinks) {
+            setFormData(prev => ({
+              ...prev,
+              socialLinks: data.socialLinks
+            }));
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching profile:", error);
+          toast({
+            title: "Error",
+            description: "Failed to load profile data",
+            variant: "destructive"
+          });
+        });
     }
   }, [session]);
 
@@ -68,6 +94,29 @@ export default function ProfilePage() {
     }
   };
 
+  const addSocialLink = () => {
+    setFormData(prev => ({
+      ...prev,
+      socialLinks: [...prev.socialLinks, { platform: "", url: "" }]
+    }));
+  };
+
+  const removeSocialLink = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      socialLinks: prev.socialLinks.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateSocialLink = (index: number, field: keyof SocialLink, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      socialLinks: prev.socialLinks.map((link, i) => 
+        i === index ? { ...link, [field]: value } : link
+      )
+    }));
+  };
+
   return (
     <div className="container mx-auto py-8">
       <Card>
@@ -95,6 +144,47 @@ export default function ProfilePage() {
                 disabled
               />
             </div>
+
+            {/* Social Links Section */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <Label>Social Links</Label>
+                <Button type="button" variant="outline" onClick={addSocialLink} disabled={loading}>
+                  Add Social Link
+                </Button>
+              </div>
+              {formData.socialLinks.map((link, index) => (
+                <div key={index} className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Label>Platform</Label>
+                    <Input
+                      value={link.platform}
+                      onChange={(e) => updateSocialLink(index, "platform", e.target.value)}
+                      placeholder="e.g., Twitter, Discord, Steam"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label>URL</Label>
+                    <Input
+                      value={link.url}
+                      onChange={(e) => updateSocialLink(index, "url", e.target.value)}
+                      placeholder="https://..."
+                      disabled={loading}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => removeSocialLink(index)}
+                    disabled={loading}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="currentPassword">Current Password</Label>
               <Input

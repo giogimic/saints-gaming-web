@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
-import { getUserById, saveUser } from '@/lib/storage';
+import { getUserById, updateUser } from '@/lib/db';
 import { hasPermission } from '@/lib/permissions';
 
 export async function GET(
@@ -60,7 +60,7 @@ export async function PATCH(
       updatedAt: new Date().toISOString(),
     };
 
-    await saveUser(updatedUser);
+    await updateUser(updatedUser);
     return NextResponse.json(updatedUser);
   } catch (error) {
     return NextResponse.json(

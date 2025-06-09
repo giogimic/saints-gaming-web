@@ -1,110 +1,83 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import { PrismaClient } from '@prisma/client';
+import type { User as PrismaUser, SocialLink as PrismaSocialLink } from '@prisma/client';
 import { User, UserSettings, UserGamingProfile, ForumPost, ForumReply, ForumCategory } from './types';
+import { UserRole, DEFAULT_ADMIN_EMAIL, DEFAULT_CATEGORIES } from './permissions';
+
+const prisma = new PrismaClient();
 
 let db: any = null;
 
 async function initDatabase() {
   try {
-    db = await open({
-      filename: 'saintsgaming.db',
-      driver: sqlite3.Database
-    });
+    db = await prisma;
 
     // Users table
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        email TEXT UNIQUE NOT NULL,
-        name TEXT NOT NULL,
-        role TEXT NOT NULL,
-        emailVerified TEXT NOT NULL,
-        createdAt TEXT NOT NULL,
-        updatedAt TEXT NOT NULL
-      )
-    `);
+    await prisma.user.createMany({
+      data: [
+        {
+          id: 'admin',
+          email: 'matthewatoope@gmail.com',
+          name: 'Matthew Atoope',
+          password: 'admin',
+          role: UserRole.ADMIN,
+          emailVerified: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ]
+    });
 
     // User settings table
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS user_settings (
-        userId TEXT PRIMARY KEY,
-        theme TEXT NOT NULL,
-        notifications BOOLEAN NOT NULL,
-        language TEXT NOT NULL,
-        timezone TEXT NOT NULL,
-        emailNotifications BOOLEAN NOT NULL,
-        darkMode BOOLEAN NOT NULL,
-        showOnlineStatus BOOLEAN NOT NULL,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      )
-    `);
+    await prisma.userSettings.createMany({
+      data: [
+        {
+          userId: 'admin',
+          theme: 'default',
+          notifications: true,
+          language: 'en',
+          timezone: 'UTC',
+          emailNotifications: true,
+          darkMode: false,
+          showOnlineStatus: true
+        }
+      ]
+    });
 
     // User gaming profile table
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS user_gaming_profiles (
-        userId TEXT PRIMARY KEY,
-        favoriteGames TEXT NOT NULL,
-        gamingSetup TEXT NOT NULL,
-        gamingPreferences TEXT NOT NULL,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      )
-    `);
+    await prisma.userGamingProfile.createMany({
+      data: [
+        {
+          userId: 'admin',
+          favoriteGames: '[]',
+          gamingSetup: '[]',
+          gamingPreferences: '[]'
+        }
+      ]
+    });
+
+    // User social links table
+    await prisma.userSocialLink.createMany({
+      data: [
+        {
+          id: 'admin-social-link',
+          userId: 'admin',
+          platform: 'steam',
+          url: 'https://steamcommunity.com/id/matthewatoope',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ]
+    });
 
     // Forum categories table
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS forum_categories (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT NOT NULL,
-        "order" INTEGER NOT NULL,
-        createdAt TEXT NOT NULL,
-        updatedAt TEXT NOT NULL
-      )
-    `);
-
-    // Forum posts table
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS forum_posts (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        authorId TEXT NOT NULL,
-        categoryId TEXT NOT NULL,
-        isPinned BOOLEAN DEFAULT FALSE,
-        createdAt TEXT NOT NULL,
-        updatedAt TEXT NOT NULL,
-        FOREIGN KEY (authorId) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (categoryId) REFERENCES forum_categories(id) ON DELETE CASCADE
-      )
-    `);
-
-    // Forum replies table
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS forum_replies (
-        id TEXT PRIMARY KEY,
-        content TEXT NOT NULL,
-        authorId TEXT NOT NULL,
-        postId TEXT NOT NULL,
-        createdAt TEXT NOT NULL,
-        updatedAt TEXT NOT NULL,
-        FOREIGN KEY (authorId) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (postId) REFERENCES forum_posts(id) ON DELETE CASCADE
-      )
-    `);
+    await prisma.forumCategory.createMany({
+      data: DEFAULT_CATEGORIES
+    });
 
     // Post votes table
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS post_votes (
-        id TEXT PRIMARY KEY,
-        postId TEXT NOT NULL,
-        userId TEXT NOT NULL,
-        value INTEGER NOT NULL,
-        createdAt TEXT NOT NULL,
-        FOREIGN KEY (postId) REFERENCES forum_posts(id) ON DELETE CASCADE,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
-        UNIQUE(postId, userId)
-      )
-    `);
+    await prisma.postVote.createMany({
+      data: []
+    });
 
     console.log('Database initialized successfully');
   } catch (error) {
@@ -113,73 +86,231 @@ async function initDatabase() {
   }
 }
 
+async function ensureSuperAdmin() {
+  try {
+    await prisma.user.update({
+      where: { email: 'matthewatoope@gmail.com' },
+      data: { role: UserRole.ADMIN }
+    });
+  } catch (error) {
+    console.error('Error ensuring super admin:', error);
+  }
+}
+
 // Initialize database
-initDatabase().catch(console.error);
+initDatabase().then(ensureSuperAdmin).catch(console.error);
+
+// Helper functions for type conversion
+function convertPrismaUserToUser(prismaUser: any): User {
+  return {
+    id: prismaUser.id,
+    name: prismaUser.name,
+    email: prismaUser.email,
+    role: prismaUser.role as UserRole,
+    createdAt: prismaUser.createdAt.toISOString(),
+    updatedAt: prismaUser.updatedAt.toISOString(),
+    emailVerified: prismaUser.emailVerified?.toISOString() || '',
+    password: undefined,
+    bio: prismaUser.bio,
+    avatar: prismaUser.avatar,
+    steamId: prismaUser.steamId,
+    discordId: prismaUser.discordId,
+    twitchId: prismaUser.twitchId,
+    lastLogin: prismaUser.lastLogin?.toISOString(),
+    settings: prismaUser.settings ? {
+      theme: prismaUser.settings.theme as "light" | "dark" | "system",
+      notifications: prismaUser.settings.notifications,
+      language: prismaUser.settings.language,
+      timezone: prismaUser.settings.timezone,
+      emailNotifications: prismaUser.settings.emailNotifications,
+      darkMode: prismaUser.settings.darkMode,
+      showOnlineStatus: prismaUser.settings.showOnlineStatus
+    } : undefined,
+    gamingProfile: prismaUser.gamingProfile ? {
+      favoriteGames: JSON.parse(prismaUser.gamingProfile.favoriteGames),
+      gamingSetup: JSON.parse(prismaUser.gamingProfile.gamingSetup),
+      gamingPreferences: JSON.parse(prismaUser.gamingProfile.gamingPreferences)
+    } : undefined,
+    socialLinks: prismaUser.socialLinks?.map((link: any) => ({
+      platform: link.platform,
+      url: link.url
+    }))
+  };
+}
 
 // User operations
 export async function getUsers(): Promise<User[]> {
   try {
-    return await db.all('SELECT * FROM users');
+    const users = await prisma.user.findMany({
+      include: {
+        settings: true,
+        gamingProfile: true,
+        socialLinks: true
+      }
+    });
+    return users.map(convertPrismaUserToUser);
   } catch (error) {
     console.error('Error getting users:', error);
-    return [];
+    throw error;
   }
 }
 
 export async function getUserById(id: string): Promise<User | null> {
   try {
-    return await db.get('SELECT * FROM users WHERE id = ?', id);
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        settings: true,
+        gamingProfile: true,
+        socialLinks: true
+      }
+    });
+    if (!user) return null;
+    return convertPrismaUserToUser(user);
   } catch (error) {
     console.error('Error getting user by id:', error);
-    return null;
+    throw error;
   }
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
   try {
-    return await db.get('SELECT * FROM users WHERE email = ?', email);
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        settings: true,
+        gamingProfile: true,
+        socialLinks: true
+      }
+    });
+    if (!user) return null;
+    return convertPrismaUserToUser(user);
   } catch (error) {
     console.error('Error getting user by email:', error);
-    return null;
+    throw error;
   }
 }
 
-export async function createUser(user: User): Promise<User> {
+export async function createUser(user: Partial<User>): Promise<User> {
   try {
-    await db.run(`
-      INSERT INTO users (id, email, name, role, emailVerified, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [
-      user.id,
-      user.email,
-      user.name,
-      user.role,
-      user.emailVerified,
-      user.createdAt,
-      user.updatedAt
-    ]);
-    return user;
+    const newUser = await prisma.user.create({
+      data: {
+        name: user.name || '',
+        email: user.email || '',
+        password: user.password,
+        role: user.role || UserRole.MEMBER,
+        emailVerified: user.emailVerified ? new Date(user.emailVerified) : null,
+        bio: user.bio,
+        avatar: user.avatar,
+        steamId: user.steamId,
+        discordId: user.discordId,
+        twitchId: user.twitchId,
+        lastLogin: user.lastLogin ? new Date(user.lastLogin) : null,
+        settings: user.settings ? {
+          create: {
+            theme: user.settings.theme,
+            notifications: user.settings.notifications,
+            language: user.settings.language,
+            timezone: user.settings.timezone,
+            emailNotifications: user.settings.emailNotifications,
+            darkMode: user.settings.darkMode,
+            showOnlineStatus: user.settings.showOnlineStatus
+          }
+        } : undefined,
+        gamingProfile: user.gamingProfile ? {
+          create: {
+            favoriteGames: JSON.stringify(user.gamingProfile.favoriteGames),
+            gamingSetup: JSON.stringify(user.gamingProfile.gamingSetup),
+            gamingPreferences: JSON.stringify(user.gamingProfile.gamingPreferences)
+          }
+        } : undefined,
+        socialLinks: user.socialLinks ? {
+          create: user.socialLinks.map(link => ({
+            platform: link.platform,
+            url: link.url
+          }))
+        } : undefined
+      },
+      include: {
+        settings: true,
+        gamingProfile: true,
+        socialLinks: true
+      }
+    });
+    return convertPrismaUserToUser(newUser);
   } catch (error) {
     console.error('Error creating user:', error);
     throw error;
   }
 }
 
-export async function updateUser(user: User): Promise<User> {
+export async function updateUser(user: Partial<User>): Promise<User> {
   try {
-    await db.run(`
-      UPDATE users
-      SET email = ?, name = ?, role = ?, emailVerified = ?, updatedAt = ?
-      WHERE id = ?
-    `, [
-      user.email,
-      user.name,
-      user.role,
-      user.emailVerified,
-      user.updatedAt,
-      user.id
-    ]);
-    return user;
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id! },
+      data: {
+        name: user.name,
+        email: user.email,
+        password: user.password,
+        role: user.role,
+        emailVerified: user.emailVerified ? new Date(user.emailVerified) : undefined,
+        bio: user.bio,
+        avatar: user.avatar,
+        steamId: user.steamId,
+        discordId: user.discordId,
+        twitchId: user.twitchId,
+        lastLogin: user.lastLogin ? new Date(user.lastLogin) : undefined,
+        settings: user.settings ? {
+          upsert: {
+            create: {
+              theme: user.settings.theme,
+              notifications: user.settings.notifications,
+              language: user.settings.language,
+              timezone: user.settings.timezone,
+              emailNotifications: user.settings.emailNotifications,
+              darkMode: user.settings.darkMode,
+              showOnlineStatus: user.settings.showOnlineStatus
+            },
+            update: {
+              theme: user.settings.theme,
+              notifications: user.settings.notifications,
+              language: user.settings.language,
+              timezone: user.settings.timezone,
+              emailNotifications: user.settings.emailNotifications,
+              darkMode: user.settings.darkMode,
+              showOnlineStatus: user.settings.showOnlineStatus
+            }
+          }
+        } : undefined,
+        gamingProfile: user.gamingProfile ? {
+          upsert: {
+            create: {
+              favoriteGames: JSON.stringify(user.gamingProfile.favoriteGames),
+              gamingSetup: JSON.stringify(user.gamingProfile.gamingSetup),
+              gamingPreferences: JSON.stringify(user.gamingProfile.gamingPreferences)
+            },
+            update: {
+              favoriteGames: JSON.stringify(user.gamingProfile.favoriteGames),
+              gamingSetup: JSON.stringify(user.gamingProfile.gamingSetup),
+              gamingPreferences: JSON.stringify(user.gamingProfile.gamingPreferences)
+            }
+          }
+        } : undefined,
+        socialLinks: user.socialLinks ? {
+          deleteMany: {},
+          create: user.socialLinks.map(link => ({
+            platform: link.platform,
+            url: link.url
+          }))
+        } : undefined
+      },
+      include: {
+        settings: true,
+        gamingProfile: true,
+        socialLinks: true
+      }
+    });
+    return convertPrismaUserToUser(updatedUser);
   } catch (error) {
     console.error('Error updating user:', error);
     throw error;
@@ -188,7 +319,9 @@ export async function updateUser(user: User): Promise<User> {
 
 export async function deleteUser(id: string): Promise<void> {
   try {
-    await db.run('DELETE FROM users WHERE id = ?', id);
+    await prisma.user.delete({
+      where: { id }
+    });
   } catch (error) {
     console.error('Error deleting user:', error);
     throw error;
@@ -198,32 +331,58 @@ export async function deleteUser(id: string): Promise<void> {
 // User settings operations
 export async function getUserSettings(userId: string): Promise<UserSettings | null> {
   try {
-    return await db.get('SELECT * FROM user_settings WHERE userId = ?', userId);
+    const settings = await prisma.userSettings.findUnique({
+      where: { userId }
+    });
+    if (!settings) return null;
+    return {
+      theme: settings.theme as "light" | "dark" | "system",
+      notifications: settings.notifications,
+      language: settings.language,
+      timezone: settings.timezone,
+      emailNotifications: settings.emailNotifications,
+      darkMode: settings.darkMode,
+      showOnlineStatus: settings.showOnlineStatus
+    };
   } catch (error) {
     console.error('Error getting user settings:', error);
-    return null;
+    throw error;
   }
 }
 
 export async function updateUserSettings(userId: string, settings: UserSettings): Promise<UserSettings> {
   try {
-    await db.run(`
-      INSERT OR REPLACE INTO user_settings (
-        userId, theme, notifications, language, timezone,
-        emailNotifications, darkMode, showOnlineStatus
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      userId,
-      settings.theme,
-      settings.notifications,
-      settings.language,
-      settings.timezone,
-      settings.emailNotifications,
-      settings.darkMode,
-      settings.showOnlineStatus
-    ]);
-    return settings;
+    const updatedSettings = await prisma.userSettings.upsert({
+      where: { userId },
+      create: {
+        userId,
+        theme: settings.theme,
+        notifications: settings.notifications,
+        language: settings.language,
+        timezone: settings.timezone,
+        emailNotifications: settings.emailNotifications,
+        darkMode: settings.darkMode,
+        showOnlineStatus: settings.showOnlineStatus
+      },
+      update: {
+        theme: settings.theme,
+        notifications: settings.notifications,
+        language: settings.language,
+        timezone: settings.timezone,
+        emailNotifications: settings.emailNotifications,
+        darkMode: settings.darkMode,
+        showOnlineStatus: settings.showOnlineStatus
+      }
+    });
+    return {
+      theme: updatedSettings.theme as "light" | "dark" | "system",
+      notifications: updatedSettings.notifications,
+      language: updatedSettings.language,
+      timezone: updatedSettings.timezone,
+      emailNotifications: updatedSettings.emailNotifications,
+      darkMode: updatedSettings.darkMode,
+      showOnlineStatus: updatedSettings.showOnlineStatus
+    };
   } catch (error) {
     console.error('Error updating user settings:', error);
     throw error;
@@ -233,36 +392,42 @@ export async function updateUserSettings(userId: string, settings: UserSettings)
 // User gaming profile operations
 export async function getUserGamingProfile(userId: string): Promise<UserGamingProfile | null> {
   try {
-    const profile = await db.get('SELECT * FROM user_gaming_profiles WHERE userId = ?', userId);
-    if (profile) {
-      return {
-        ...profile,
-        favoriteGames: JSON.parse(profile.favoriteGames),
-        gamingSetup: JSON.parse(profile.gamingSetup),
-        gamingPreferences: JSON.parse(profile.gamingPreferences)
-      };
-    }
-    return null;
+    const profile = await prisma.userGamingProfile.findUnique({
+      where: { userId }
+    });
+    if (!profile) return null;
+    return {
+      favoriteGames: JSON.parse(profile.favoriteGames),
+      gamingSetup: JSON.parse(profile.gamingSetup),
+      gamingPreferences: JSON.parse(profile.gamingPreferences)
+    };
   } catch (error) {
     console.error('Error getting user gaming profile:', error);
-    return null;
+    throw error;
   }
 }
 
 export async function updateUserGamingProfile(userId: string, profile: UserGamingProfile): Promise<UserGamingProfile> {
   try {
-    await db.run(`
-      INSERT OR REPLACE INTO user_gaming_profiles (
-        userId, favoriteGames, gamingSetup, gamingPreferences
-      )
-      VALUES (?, ?, ?, ?)
-    `, [
-      userId,
-      JSON.stringify(profile.favoriteGames),
-      JSON.stringify(profile.gamingSetup),
-      JSON.stringify(profile.gamingPreferences)
-    ]);
-    return profile;
+    const updatedProfile = await prisma.userGamingProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        favoriteGames: JSON.stringify(profile.favoriteGames),
+        gamingSetup: JSON.stringify(profile.gamingSetup),
+        gamingPreferences: JSON.stringify(profile.gamingPreferences)
+      },
+      update: {
+        favoriteGames: JSON.stringify(profile.favoriteGames),
+        gamingSetup: JSON.stringify(profile.gamingSetup),
+        gamingPreferences: JSON.stringify(profile.gamingPreferences)
+      }
+    });
+    return {
+      favoriteGames: JSON.parse(updatedProfile.favoriteGames),
+      gamingSetup: JSON.parse(updatedProfile.gamingSetup),
+      gamingPreferences: JSON.parse(updatedProfile.gamingPreferences)
+    };
   } catch (error) {
     console.error('Error updating user gaming profile:', error);
     throw error;
@@ -273,30 +438,55 @@ export async function updateUserGamingProfile(userId: string, profile: UserGamin
 export async function getForumCategories(categoryId?: string): Promise<ForumCategory | ForumCategory[]> {
   try {
     if (categoryId) {
-      const category = await db.get('SELECT * FROM forum_categories WHERE id = ?', categoryId);
-      return category || [];
+      const category = await prisma.forumCategory.findUnique({
+        where: { id: categoryId }
+      });
+      if (!category) return [];
+      return {
+        id: category.id,
+        name: category.name,
+        description: category.description || '',
+        order: category.order,
+        createdAt: category.createdAt.toISOString(),
+        updatedAt: category.updatedAt.toISOString()
+      };
     }
-    return await db.all('SELECT * FROM forum_categories ORDER BY "order" ASC');
+    const categories = await prisma.forumCategory.findMany({
+      orderBy: { order: 'asc' }
+    });
+    return categories.map(category => ({
+      id: category.id,
+      name: category.name,
+      description: category.description || '',
+      order: category.order,
+      createdAt: category.createdAt.toISOString(),
+      updatedAt: category.updatedAt.toISOString()
+    }));
   } catch (error) {
     console.error('Error getting forum categories:', error);
-    return categoryId ? [] : [];
+    throw error;
   }
 }
 
 export async function createForumCategory(category: ForumCategory): Promise<ForumCategory> {
   try {
-    await db.run(`
-      INSERT INTO forum_categories (id, name, description, "order", createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [
-      category.id,
-      category.name,
-      category.description,
-      category.order,
-      category.createdAt,
-      category.updatedAt
-    ]);
-    return category;
+    const newCategory = await prisma.forumCategory.create({
+      data: {
+        name: category.name,
+        description: category.description,
+        order: category.order,
+        createdAt: new Date(category.createdAt),
+        updatedAt: new Date(category.updatedAt)
+      }
+    });
+    return {
+      id: newCategory.id,
+      name: newCategory.name,
+      description: newCategory.description || '',
+      order: newCategory.order,
+      createdAt: newCategory.createdAt.toISOString(),
+      updatedAt: newCategory.updatedAt.toISOString()
+    };
   } catch (error) {
     console.error('Error creating forum category:', error);
     throw error;
@@ -305,18 +495,23 @@ export async function createForumCategory(category: ForumCategory): Promise<Foru
 
 export async function updateForumCategory(category: ForumCategory): Promise<ForumCategory> {
   try {
-    await db.run(`
-      UPDATE forum_categories
-      SET name = ?, description = ?, "order" = ?, updatedAt = ?
-      WHERE id = ?
-    `, [
-      category.name,
-      category.description,
-      category.order,
-      category.updatedAt,
-      category.id
-    ]);
-    return category;
+    const updatedCategory = await prisma.forumCategory.update({
+      where: { id: category.id },
+      data: {
+        name: category.name,
+        description: category.description,
+        order: category.order,
+        updatedAt: new Date()
+      }
+    });
+    return {
+      id: updatedCategory.id,
+      name: updatedCategory.name,
+      description: updatedCategory.description || '',
+      order: updatedCategory.order,
+      createdAt: updatedCategory.createdAt.toISOString(),
+      updatedAt: updatedCategory.updatedAt.toISOString()
+    };
   } catch (error) {
     console.error('Error updating forum category:', error);
     throw error;
@@ -325,7 +520,9 @@ export async function updateForumCategory(category: ForumCategory): Promise<Foru
 
 export async function deleteForumCategory(id: string): Promise<void> {
   try {
-    await db.run('DELETE FROM forum_categories WHERE id = ?', id);
+    await prisma.forumCategory.delete({
+      where: { id }
+    });
   } catch (error) {
     console.error('Error deleting forum category:', error);
     throw error;
@@ -336,34 +533,93 @@ export async function deleteForumCategory(id: string): Promise<void> {
 export async function getForumPosts(postId?: string): Promise<ForumPost | ForumPost[]> {
   try {
     if (postId) {
-      const post = await db.get('SELECT * FROM forum_posts WHERE id = ?', postId);
-      return post || [];
+      const post = await prisma.forumPost.findUnique({
+        where: { id: postId },
+        include: {
+          author: true,
+          category: true,
+          votes: true
+        }
+      });
+      if (!post) return [];
+      return {
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        authorId: post.authorId,
+        authorName: post.author.name,
+        categoryId: post.categoryId,
+        isPinned: post.isPinned,
+        createdAt: post.createdAt.toISOString(),
+        updatedAt: post.updatedAt.toISOString(),
+        votes: post.votes.map(vote => ({
+          userId: vote.userId,
+          value: vote.value
+        }))
+      };
     }
-    return await db.all('SELECT * FROM forum_posts ORDER BY isPinned DESC, createdAt DESC');
+    const posts = await prisma.forumPost.findMany({
+      include: {
+        author: true,
+        category: true,
+        votes: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    return posts.map(post => ({
+      id: post.id,
+      title: post.title,
+      content: post.content,
+      authorId: post.authorId,
+      authorName: post.author.name,
+      categoryId: post.categoryId,
+      isPinned: post.isPinned,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      votes: post.votes.map(vote => ({
+        userId: vote.userId,
+        value: vote.value
+      }))
+    }));
   } catch (error) {
     console.error('Error getting forum posts:', error);
-    return postId ? [] : [];
+    throw error;
   }
 }
 
 export async function createForumPost(post: ForumPost): Promise<ForumPost> {
   try {
-    await db.run(`
-      INSERT INTO forum_posts (
-        id, title, content, authorId, categoryId, isPinned, createdAt, updatedAt
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      post.id,
-      post.title,
-      post.content,
-      post.authorId,
-      post.categoryId,
-      post.isPinned,
-      post.createdAt,
-      post.updatedAt
-    ]);
-    return post;
+    const newPost = await prisma.forumPost.create({
+      data: {
+        title: post.title,
+        content: post.content,
+        authorId: post.authorId,
+        categoryId: post.categoryId,
+        isPinned: post.isPinned,
+        createdAt: new Date(post.createdAt),
+        updatedAt: new Date(post.updatedAt)
+      },
+      include: {
+        author: true,
+        category: true,
+        votes: true
+      }
+    });
+    return {
+      id: newPost.id,
+      title: newPost.title,
+      content: newPost.content,
+      authorId: newPost.authorId,
+      authorName: newPost.author.name,
+      categoryId: newPost.categoryId,
+      isPinned: newPost.isPinned,
+      createdAt: newPost.createdAt.toISOString(),
+      updatedAt: newPost.updatedAt.toISOString(),
+      votes: newPost.votes.map(vote => ({
+        userId: vote.userId,
+        value: vote.value
+      }))
+    };
   } catch (error) {
     console.error('Error creating forum post:', error);
     throw error;
@@ -372,19 +628,37 @@ export async function createForumPost(post: ForumPost): Promise<ForumPost> {
 
 export async function updateForumPost(post: ForumPost): Promise<ForumPost> {
   try {
-    await db.run(`
-      UPDATE forum_posts
-      SET title = ?, content = ?, categoryId = ?, isPinned = ?, updatedAt = ?
-      WHERE id = ?
-    `, [
-      post.title,
-      post.content,
-      post.categoryId,
-      post.isPinned,
-      post.updatedAt,
-      post.id
-    ]);
-    return post;
+    const updatedPost = await prisma.forumPost.update({
+      where: { id: post.id },
+      data: {
+        title: post.title,
+        content: post.content,
+        authorId: post.authorId,
+        categoryId: post.categoryId,
+        isPinned: post.isPinned,
+        updatedAt: new Date()
+      },
+      include: {
+        author: true,
+        category: true,
+        votes: true
+      }
+    });
+    return {
+      id: updatedPost.id,
+      title: updatedPost.title,
+      content: updatedPost.content,
+      authorId: updatedPost.authorId,
+      authorName: updatedPost.author.name,
+      categoryId: updatedPost.categoryId,
+      isPinned: updatedPost.isPinned,
+      createdAt: updatedPost.createdAt.toISOString(),
+      updatedAt: updatedPost.updatedAt.toISOString(),
+      votes: updatedPost.votes.map(vote => ({
+        userId: vote.userId,
+        value: vote.value
+      }))
+    };
   } catch (error) {
     console.error('Error updating forum post:', error);
     throw error;
@@ -393,7 +667,9 @@ export async function updateForumPost(post: ForumPost): Promise<ForumPost> {
 
 export async function deleteForumPost(id: string): Promise<void> {
   try {
-    await db.run('DELETE FROM forum_posts WHERE id = ?', id);
+    await prisma.forumPost.delete({
+      where: { id }
+    });
   } catch (error) {
     console.error('Error deleting forum post:', error);
     throw error;
@@ -403,30 +679,49 @@ export async function deleteForumPost(id: string): Promise<void> {
 // Forum reply operations
 export async function getForumReplies(postId?: string): Promise<ForumReply[]> {
   try {
-    if (postId) {
-      return await db.all('SELECT * FROM forum_replies WHERE postId = ? ORDER BY createdAt ASC', postId);
-    }
-    return await db.all('SELECT * FROM forum_replies ORDER BY createdAt ASC');
+    const replies = await prisma.forumReply.findMany({
+      where: postId ? { postId } : undefined,
+      include: {
+        author: true
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+    return replies.map(reply => ({
+      id: reply.id,
+      content: reply.content,
+      authorId: reply.authorId,
+      postId: reply.postId,
+      createdAt: reply.createdAt.toISOString(),
+      updatedAt: reply.updatedAt.toISOString()
+    }));
   } catch (error) {
     console.error('Error getting forum replies:', error);
-    return [];
+    throw error;
   }
 }
 
 export async function createForumReply(reply: ForumReply): Promise<ForumReply> {
   try {
-    await db.run(`
-      INSERT INTO forum_replies (id, content, authorId, postId, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [
-      reply.id,
-      reply.content,
-      reply.authorId,
-      reply.postId,
-      reply.createdAt,
-      reply.updatedAt
-    ]);
-    return reply;
+    const newReply = await prisma.forumReply.create({
+      data: {
+        content: reply.content,
+        authorId: reply.authorId,
+        postId: reply.postId,
+        createdAt: new Date(reply.createdAt),
+        updatedAt: new Date(reply.updatedAt)
+      },
+      include: {
+        author: true
+      }
+    });
+    return {
+      id: newReply.id,
+      content: newReply.content,
+      authorId: newReply.authorId,
+      postId: newReply.postId,
+      createdAt: newReply.createdAt.toISOString(),
+      updatedAt: newReply.updatedAt.toISOString()
+    };
   } catch (error) {
     console.error('Error creating forum reply:', error);
     throw error;
@@ -435,16 +730,26 @@ export async function createForumReply(reply: ForumReply): Promise<ForumReply> {
 
 export async function updateForumReply(reply: ForumReply): Promise<ForumReply> {
   try {
-    await db.run(`
-      UPDATE forum_replies
-      SET content = ?, updatedAt = ?
-      WHERE id = ?
-    `, [
-      reply.content,
-      reply.updatedAt,
-      reply.id
-    ]);
-    return reply;
+    const updatedReply = await prisma.forumReply.update({
+      where: { id: reply.id },
+      data: {
+        content: reply.content,
+        authorId: reply.authorId,
+        postId: reply.postId,
+        updatedAt: new Date()
+      },
+      include: {
+        author: true
+      }
+    });
+    return {
+      id: updatedReply.id,
+      content: updatedReply.content,
+      authorId: updatedReply.authorId,
+      postId: updatedReply.postId,
+      createdAt: updatedReply.createdAt.toISOString(),
+      updatedAt: updatedReply.updatedAt.toISOString()
+    };
   } catch (error) {
     console.error('Error updating forum reply:', error);
     throw error;
@@ -453,9 +758,92 @@ export async function updateForumReply(reply: ForumReply): Promise<ForumReply> {
 
 export async function deleteForumReply(id: string): Promise<void> {
   try {
-    await db.run('DELETE FROM forum_replies WHERE id = ?', id);
+    await prisma.forumReply.delete({
+      where: { id }
+    });
   } catch (error) {
     console.error('Error deleting forum reply:', error);
+    throw error;
+  }
+}
+
+// User profile operations
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  steamId?: string;
+  socialLinks: {
+    platform: string;
+    url: string;
+  }[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        socialLinks: true,
+        gamingProfile: true
+      }
+    });
+    if (!user) return null;
+    return {
+      ...user,
+      password: undefined,
+      steamId: user.gamingProfile?.steamId,
+      socialLinks: user.socialLinks.map(link => ({
+        platform: link.platform,
+        url: link.url
+      }))
+    };
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    throw error;
+  }
+}
+
+export async function updateUserProfile(
+  userId: string,
+  data: {
+    name?: string;
+    socialLinks?: { platform: string; url: string }[];
+  }
+): Promise<UserProfile> {
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: data.name,
+        socialLinks: data.socialLinks ? {
+          deleteMany: {},
+          create: data.socialLinks.map(link => ({
+            platform: link.platform,
+            url: link.url
+          }))
+        } : undefined,
+        updatedAt: new Date()
+      },
+      include: {
+        socialLinks: true,
+        gamingProfile: true
+      }
+    });
+    return {
+      ...user,
+      password: undefined,
+      steamId: user.gamingProfile?.steamId,
+      socialLinks: user.socialLinks.map(link => ({
+        platform: link.platform,
+        url: link.url
+      }))
+    };
+  } catch (error) {
+    console.error('Error updating user profile:', error);
     throw error;
   }
 }

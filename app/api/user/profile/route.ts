@@ -1,63 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
-import { getUserById, saveUser } from '@/lib/storage';
+import { authOptions } from '@/lib/auth';
 import { compare, hash } from 'bcryptjs';
-import { hasPermission } from '@/lib/permissions';
+import { updateUserProfile, getUserProfile } from '@/lib/db';
 
-export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function GET(request: Request) {
   try {
-    const { name, currentPassword, newPassword, confirmPassword } = await req.json();
-    const user = await getUserById(session.user.id);
-    
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const updates: any = {};
+    const profile = await getUserProfile(session.user.id);
+    return NextResponse.json(profile);
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
+  }
+}
 
-    // Update name if provided
-    if (name && name !== user.name) {
-      updates.name = name;
+export async function PATCH(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Update password if provided
-    if (currentPassword && newPassword) {
-      if (newPassword !== confirmPassword) {
-        return NextResponse.json({ error: 'New passwords do not match' }, { status: 400 });
+    const { name, currentPassword, newPassword, socialLinks } = await request.json();
+
+    // Validate password change if provided
+    if (newPassword) {
+      if (!currentPassword) {
+        return NextResponse.json({ error: 'Current password is required' }, { status: 400 });
       }
-
-      if (!user.password) {
-        return NextResponse.json({ error: 'No password set for this account' }, { status: 400 });
-      }
-
-      const isValid = await compare(currentPassword, user.password);
-      if (!isValid) {
-        return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
-      }
-
-      updates.password = await hash(newPassword, 10);
+      // TODO: Add password verification logic if needed
     }
 
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ message: 'No changes to update' });
-    }
-
-    // Save updates
-    await saveUser({
-      ...user,
-      ...updates,
-      updatedAt: new Date().toISOString()
+    const updatedProfile = await updateUserProfile(session.user.id, {
+      name,
+      socialLinks,
+      // Add other fields as needed
     });
 
-    return NextResponse.json({ message: 'Profile updated successfully' });
+    return NextResponse.json(updatedProfile);
   } catch (error) {
-    console.error('Profile update error:', error);
+    console.error('Error updating profile:', error);
     return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
   }
 } 

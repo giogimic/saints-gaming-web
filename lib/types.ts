@@ -1,9 +1,4 @@
-export enum UserRole {
-  ADMIN = 'admin',
-  MODERATOR = 'moderator',
-  MEMBER = 'member',
-  USER = 'user'
-}
+import { UserRole } from './permissions';
 
 export interface UserSettings {
   theme: "light" | "dark" | "system";
@@ -43,14 +38,15 @@ export interface GamingUrls {
 
 export interface User {
   id: string;
-  email: string;
   name: string;
+  email: string;
   role: UserRole;
-  emailVerified: string;
   createdAt: string;
   updatedAt: string;
+  emailVerified: string;
   password?: string;
   bio?: string;
+  avatar?: string;
   steamId?: string;
   discordId?: string;
   twitchId?: string;
@@ -58,6 +54,44 @@ export interface User {
   settings?: UserSettings;
   gamingProfile?: UserGamingProfile;
   gamingUrls?: GamingUrls;
+  socialLinks?: {
+    platform: string;
+    url: string;
+  }[];
+}
+
+export interface Post {
+  id: string;
+  title: string;
+  content: string;
+  authorId: string;
+  authorName: string;
+  categoryId: string;
+  createdAt: string;
+  updatedAt: string;
+  isPinned: boolean;
+  votes: Vote[];
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Vote {
+  id: string;
+  postId: string;
+  userId: string;
+  value: number;
+  createdAt: string;
+}
+
+export interface Session {
+  user: User;
+  expires: string;
 }
 
 export interface ForumCategory {
@@ -126,6 +160,22 @@ export interface CookieConsent {
     necessary: boolean;
     analytics: boolean;
     marketing: boolean;
+  };
+}
+
+export interface SteamStats {
+  achievements: number;
+  playtime: number;
+  friends: number;
+  games: {
+    appid: number;
+    name: string;
+    playtime_forever: number;
+    playtime_2weeks?: number;
+  }[];
+  currentGame?: {
+    name: string;
+    appid: number;
   };
 }
 

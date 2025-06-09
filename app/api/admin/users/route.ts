@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUsers, getUserById, saveUser, deleteUser, updateUserRole } from '@/lib/storage';
+import { getUsers, getUserById, updateUser, deleteUser } from '@/lib/db';
 import { hasPermission } from '@/lib/permissions';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
-  await saveUser({ ...user, ...updates, updatedAt: new Date().toISOString() });
+  await updateUser({ ...user, ...updates, updatedAt: new Date().toISOString() });
   return NextResponse.json({ message: 'User updated' });
 }
 
@@ -36,23 +36,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
   const { id } = await req.json();
-  const success = await deleteUser(id);
-  if (!success) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
+  await deleteUser(id);
   return NextResponse.json({ message: 'User deleted' });
-}
-
-// POST: Change user role (admin only)
-export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || !hasPermission(session.user.role, 'manage:roles')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
-  const { id, role } = await req.json();
-  const user = await updateUserRole(id, role);
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
-  return NextResponse.json({ message: 'User role updated' });
 } 

@@ -2,30 +2,18 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, Gamepad2, Users, Calendar, MessageSquare } from 'lucide-react';
+import Image from 'next/image';
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col gap-8">
-      {/* Hero Section */}
-      <section className="relative py-20 bg-gradient-to-r from-primary/10 to-primary/5">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Welcome to SaintsGaming
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8">
-              Join our vibrant gaming community. Connect with fellow gamers, participate in events,
-              and stay updated with the latest gaming news.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" asChild>
-                <Link href="/auth/register">Join Now</Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link href="/about">Learn More</Link>
-              </Button>
-            </div>
-          </div>
+    <>
+      <section className="relative flex flex-col items-center justify-center min-h-[60vh] bg-gradient-to-br from-black via-green-900 to-green-700 text-white py-16">
+        <Image src="/saintsgaming-logo.png" alt="Saints Gaming Logo" width={120} height={120} className="mb-6 drop-shadow-lg" />
+        <h1 className="text-5xl font-extrabold mb-4 tracking-tight">Saints Gaming</h1>
+        <p className="text-xl mb-8 max-w-xl text-center text-green-100">Welcome to the Saints Gaming community! Join our Discord, play our custom Minecraft modpack, and connect with fellow gamers.</p>
+        <div className="flex gap-6">
+          <a href="https://discord.saintsgaming.net" target="_blank" rel="noopener noreferrer" className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold text-lg shadow-lg transition">Join Discord</a>
+          <a href="https://curseforge.com/minecraft/modpacks/saints-gaming/" target="_blank" rel="noopener noreferrer" className="px-8 py-3 bg-gray-900 hover:bg-green-500 text-green-300 hover:text-white rounded-lg font-bold text-lg shadow-lg transition">Get Modpack</a>
         </div>
       </section>
 
@@ -144,6 +132,6 @@ export default function HomePage() {
           </Button>
         </div>
       </section>
-    </div>
+    </>
   );
 }

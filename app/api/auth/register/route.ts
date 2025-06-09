@@ -1,51 +1,52 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
-import { saveUser } from '@/lib/storage';
-import { sendVerificationEmail } from '@/lib/email';
-import { v4 as uuidv4 } from 'uuid';
-import { getUsers } from '@/lib/storage';
+import { createUser, getUserByEmail } from '@/lib/db';
 import { UserRole } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    const { email, name, password } = await req.json();
 
-    if (!name || !email || !password) {
+    if (!email || !name || !password) {
       return NextResponse.json(
-        { message: 'Missing required fields' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Create new user with admin role for the first user
-    const users = await getUsers();
-    const isFirstUser = users.length === 0;
+    // Check if user already exists
+    const existingUser = await getUserByEmail(email);
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'User already exists' },
+        { status: 400 }
+      );
+    }
 
-    const user = await saveUser({
+    // Hash password
+    const hashedPassword = await hash(password, 10);
+
+    // Create user
+    const user = await createUser({
       id: uuidv4(),
-      name,
       email,
-      password: await hash(password, 10),
-      role: isFirstUser ? UserRole.ADMIN : UserRole.MEMBER,
+      name,
+      password: hashedPassword,
+      role: UserRole.MEMBER,
       emailVerified: new Date().toISOString(),
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      bio: '',
-      gamingUrls: {
-        steam: '',
-        discord: '',
-        twitch: ''
-      }
+      updatedAt: new Date().toISOString()
     });
 
-    return NextResponse.json(
-      { message: 'User registered successfully' },
-      { status: 201 }
-    );
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+
+    return NextResponse.json(userWithoutPassword);
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(
-      { message: 'Failed to register user' },
+      { error: 'Failed to register user' },
       { status: 500 }
     );
   }

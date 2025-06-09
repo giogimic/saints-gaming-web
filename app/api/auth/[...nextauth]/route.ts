@@ -2,9 +2,8 @@ import NextAuth from 'next-auth';
 import { AuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import SteamProvider from '@/lib/auth/steam-provider';
-import { saveUser, getUsers } from '@/lib/storage';
+import { createUser, getUsers, getUserByEmail, updateUser, getUserBySteamId } from '@/lib/db';
 import { compare, hash } from 'bcryptjs';
-import { getUserByEmail } from '@/lib/storage';
 import { UserRole } from '@/lib/types';
 
 interface SteamProfile {
@@ -22,21 +21,17 @@ export const authOptions: AuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email and password are required');
+          return null;
         }
 
         const user = await getUserByEmail(credentials.email);
         if (!user) {
-          throw new Error('No user found with this email');
-        }
-
-        if (!user.password) {
-          throw new Error('No password set for this account');
+          return null;
         }
 
         const isValid = await compare(credentials.password, user.password);
         if (!isValid) {
-          throw new Error('Invalid password');
+          return null;
         }
 
         return {
@@ -44,12 +39,40 @@ export const authOptions: AuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          image: user.avatar
         };
       },
     }),
     SteamProvider({
       clientId: process.env.STEAM_CLIENT_ID || '',
       clientSecret: process.env.STEAM_API_KEY || '',
+      async profile(profile) {
+        const steamId = profile.steamid;
+        let user = await getUserBySteamId(steamId);
+
+        if (!user) {
+          // Create new user from Steam profile
+          user = {
+            id: steamId,
+            email: `${steamId}@steam.user`,
+            name: profile.personaname,
+            role: 'user',
+            steamId: steamId,
+            avatar: profile.avatarfull,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          await createUser(user);
+        }
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.avatar,
+          role: user.role
+        };
+      }
     }),
   ],
   callbacks: {
@@ -64,10 +87,7 @@ export const authOptions: AuthOptions = {
           const existingUser = users.find(u => u.steamId === steamId);
 
           if (existingUser) {
-            await saveUser({
-              ...existingUser,
-              lastLogin: new Date().toISOString()
-            });
+            await updateUser({ ...existingUser, lastLogin: new Date().toISOString() });
             return true;
           }
 
@@ -89,7 +109,7 @@ export const authOptions: AuthOptions = {
             }
           };
 
-          await saveUser(newUser);
+          await createUser(newUser);
           return true;
         } catch (error) {
           console.error('Steam sign in error:', error);
@@ -99,14 +119,9 @@ export const authOptions: AuthOptions = {
 
       if (account?.provider === 'credentials') {
         try {
-          const users = await getUsers();
-          const existingUser = users.find(u => u.email === user.email);
-
-          if (existingUser) {
-            await saveUser({
-              ...existingUser,
-              lastLogin: new Date().toISOString()
-            });
+          const userDb = await getUserByEmail(user.email);
+          if (userDb) {
+            await updateUser({ ...userDb, lastLogin: new Date().toISOString() });
             return true;
           }
 
@@ -127,7 +142,7 @@ export const authOptions: AuthOptions = {
             }
           };
 
-          await saveUser(newUser);
+          await createUser(newUser);
           return true;
         } catch (error) {
           console.error('Credentials sign in error:', error);
@@ -139,8 +154,7 @@ export const authOptions: AuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        const users = await getUsers();
-        const user = users.find(u => u.email === session.user.email);
+        const user = await getUserByEmail(session.user.email);
         if (user) {
           session.user.id = user.id;
           session.user.role = user.role;

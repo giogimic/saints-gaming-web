@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
-import { getUserById, saveUser } from '@/lib/storage';
+import { getUserById, updateUserSettings } from '@/lib/db';
 
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -18,13 +18,9 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Update user settings
-    await saveUser({
-      ...user,
-      settings: {
-        ...user.settings,
-        ...updates
-      },
-      updatedAt: new Date().toISOString()
+    await updateUserSettings(session.user.id, {
+      ...user.settings,
+      ...updates
     });
 
     return NextResponse.json({ message: 'Settings updated successfully' });

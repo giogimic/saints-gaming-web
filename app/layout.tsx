@@ -9,6 +9,7 @@ import { CookieConsent } from '@/components/cookie-consent';
 import { AgeVerification } from '@/components/age-verification';
 import { GlobalErrorBoundary } from '@/components/global-error-boundary';
 import { AdminToolbar } from '@/components/admin-toolbar';
+import Head from 'next/head';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -26,24 +27,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <AuthProvider>
-          <GlobalErrorBoundary>
-            <AdminToolbar />
-            <div className="flex min-h-screen flex-col">
-              <MainNav />
-              <main className="flex-1">
-                {children}
-              </main>
-              <Footer />
-            </div>
-            <CookieConsent />
-            <AgeVerification />
-            <Toaster />
-          </GlobalErrorBoundary>
-        </AuthProvider>
-      </body>
-    </html>
+    <>
+      <Head>
+        <link rel="icon" href="/saintsgaming-icon.png" type="image/png" />
+      </Head>
+      <html lang="en" suppressHydrationWarning>
+        <body className={inter.className}>
+          <AuthProvider>
+            <GlobalErrorBoundary>
+              <AdminToolbar />
+              <div className="flex min-h-screen flex-col">
+                <MainNav />
+                <main className="flex-1">
+                  {children}
+                </main>
+                <Footer />
+              </div>
+              <CookieConsent />
+              <AgeVerification />
+              <Toaster />
+            </GlobalErrorBoundary>
+          </AuthProvider>
+        </body>
+      </html>
+    </>
   );
 }
