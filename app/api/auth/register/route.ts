@@ -4,6 +4,7 @@ import { saveUser } from '@/lib/storage';
 import { sendVerificationEmail } from '@/lib/email';
 import { v4 as uuidv4 } from 'uuid';
 import { getUsers } from '@/lib/storage';
+import { UserRole } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
@@ -24,9 +25,9 @@ export async function POST(request: Request) {
       id: uuidv4(),
       name,
       email,
-      password,
-      role: isFirstUser ? 'admin' : 'member',
-      emailVerified: false,
+      password: await hash(password, 10),
+      role: isFirstUser ? UserRole.ADMIN : UserRole.MEMBER,
+      emailVerified: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       bio: '',

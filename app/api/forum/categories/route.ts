@@ -7,9 +7,12 @@ import { getForumCategories, createForumCategory, updateForumCategory, deleteFor
 import { hasPermission } from '@/lib/permissions';
 
 // GET: List all categories
-export async function GET(req: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const categories = await getForumCategories();
+    const { searchParams } = new URL(request.url);
+    const categoryId = searchParams.get('id');
+
+    const categories = await getForumCategories(categoryId || undefined);
     return NextResponse.json(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -18,26 +21,29 @@ export async function GET(req: NextRequest) {
 }
 
 // POST: Create a new category
-export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || !hasPermission(session.user.role, 'manage:categories')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export async function POST(request: Request) {
   try {
-    const { name, description } = await req.json();
-    if (!name) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const { name, description, order } = await request.json();
+    if (!name || !description || order === undefined) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
     const category: ForumCategory = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       name,
-      description: description || '',
-      order: 0,
+      description,
+      order,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
-    const createdCategory = await createForumCategory(category);
-    return NextResponse.json(createdCategory);
+
+    await createForumCategory(category);
+    return NextResponse.json(category, { status: 201 });
   } catch (error) {
     console.error('Error creating category:', error);
     return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
@@ -45,22 +51,37 @@ export async function POST(req: NextRequest) {
 }
 
 // PATCH: Update a category
-export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || !hasPermission(session.user.role, 'manage:categories')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export async function PATCH(request: Request) {
   try {
-    const { id, ...updates } = await req.json();
-    if (!id) {
-      return NextResponse.json({ error: 'Category ID is required' }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const categories = await getForumCategories();
+
+    const { id, name, description, order } = await request.json();
+    if (!id || !name || !description || order === undefined) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const categories = await getForumCategories(id);
+    if (!Array.isArray(categories)) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    }
+
     const category = categories.find(c => c.id === id);
     if (!category) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
-    const updatedCategory = await updateForumCategory({ ...category, ...updates, updatedAt: new Date().toISOString() });
+
+    const updatedCategory: ForumCategory = {
+      ...category,
+      name,
+      description,
+      order,
+      updatedAt: new Date().toISOString()
+    };
+
+    await updateForumCategory(updatedCategory);
     return NextResponse.json(updatedCategory);
   } catch (error) {
     console.error('Error updating category:', error);
@@ -69,23 +90,31 @@ export async function PATCH(req: NextRequest) {
 }
 
 // DELETE: Delete a category
-export async function DELETE(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || !hasPermission(session.user.role, 'manage:categories')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export async function DELETE(request: Request) {
   try {
-    const { id } = await req.json();
-    if (!id) {
-      return NextResponse.json({ error: 'Category ID is required' }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const categories = await getForumCategories();
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Missing category ID' }, { status: 400 });
+    }
+
+    const categories = await getForumCategories(id);
+    if (!Array.isArray(categories)) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    }
+
     const category = categories.find(c => c.id === id);
     if (!category) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
+
     await deleteForumCategory(id);
-    return NextResponse.json({ message: 'Category deleted successfully' });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting category:', error);
     return NextResponse.json({ error: 'Failed to delete category' }, { status: 500 });

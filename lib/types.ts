@@ -35,6 +35,12 @@ export interface UserGamingProfile {
   };
 }
 
+export interface GamingUrls {
+  steam: string;
+  discord: string;
+  twitch: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -43,8 +49,15 @@ export interface User {
   emailVerified: string;
   createdAt: string;
   updatedAt: string;
+  password?: string;
+  bio?: string;
+  steamId?: string;
+  discordId?: string;
+  twitchId?: string;
+  lastLogin?: string;
   settings?: UserSettings;
   gamingProfile?: UserGamingProfile;
+  gamingUrls?: GamingUrls;
 }
 
 export interface ForumCategory {
@@ -61,10 +74,15 @@ export interface ForumPost {
   title: string;
   content: string;
   authorId: string;
+  authorName?: string;
   categoryId: string;
   isPinned: boolean;
   createdAt: string;
   updatedAt: string;
+  votes?: Array<{
+    userId: string;
+    value: number;
+  }>;
 }
 
 export interface ForumReply {
@@ -112,13 +130,15 @@ export interface CookieConsent {
 }
 
 export const ROLE_WEIGHTS: Record<UserRole, number> = {
-  member: 0,
-  moderator: 1,
-  admin: 2,
+  [UserRole.USER]: 0,
+  [UserRole.MEMBER]: 1,
+  [UserRole.MODERATOR]: 2,
+  [UserRole.ADMIN]: 3,
 };
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  member: ['read:posts', 'create:posts', 'edit:own:posts', 'delete:own:posts'],
-  moderator: ['read:posts', 'create:posts', 'edit:posts', 'delete:posts', 'manage:categories'],
-  admin: ['read:posts', 'create:posts', 'edit:posts', 'delete:posts', 'manage:categories', 'manage:users', 'manage:roles'],
+  [UserRole.USER]: ['read:posts'],
+  [UserRole.MEMBER]: ['read:posts', 'create:posts', 'edit:own:posts', 'delete:own:posts'],
+  [UserRole.MODERATOR]: ['read:posts', 'create:posts', 'edit:posts', 'delete:posts', 'manage:categories'],
+  [UserRole.ADMIN]: ['read:posts', 'create:posts', 'edit:posts', 'delete:posts', 'manage:categories', 'manage:users', 'manage:roles'],
 }; 

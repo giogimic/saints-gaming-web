@@ -1,18 +1,17 @@
+import { saveUser } from '@/lib/storage';
 import { hash } from 'bcryptjs';
-import { saveUser } from '../lib/storage';
-import { v4 as uuidv4 } from 'uuid';
+import { UserRole } from '@/lib/types';
 
 async function createAdminUser() {
   try {
-    const hashedPassword = await hash('12345', 10);
-
+    const hashedPassword = await hash('admin123', 10);
     const adminUser = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       name: 'Admin',
-      email: 'admin@saintsgaming.com',
+      email: 'admin@example.com',
       password: hashedPassword,
-      role: 'admin' as const,
-      emailVerified: true,
+      role: UserRole.ADMIN,
+      emailVerified: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

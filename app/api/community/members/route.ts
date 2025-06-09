@@ -1,39 +1,29 @@
 import { NextResponse } from 'next/server';
+import { getUsers } from '@/lib/db';
 import type { Member } from '@/types/community';
-
-// This would typically come from a database
-const members: Member[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    role: 'Admin',
-    avatar: '/avatars/john.jpg',
-    status: 'Online',
-    games: ['CS2', 'Minecraft'],
-    joinDate: '2023-01-15',
-    discordId: '123456789',
-    bio: 'Founder of Saints Gaming',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    role: 'Moderator',
-    avatar: '/avatars/jane.jpg',
-    status: 'Offline',
-    games: ['Rust', 'CS2'],
-    joinDate: '2023-02-20',
-    discordId: '987654321',
-    bio: 'Community Manager',
-  },
-];
 
 export async function GET() {
   try {
+    const users = await getUsers();
+    const members: Member[] = users.map(user => ({
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      avatar: `https://www.gravatar.com/avatar/${user.email}?d=identicon&s=200`,
+      status: 'Offline', // TODO: Implement real-time status tracking
+      games: user.gamingUrls ? Object.keys(user.gamingUrls).filter(key => user.gamingUrls[key]) : [],
+      joinDate: user.createdAt,
+      discordId: user.gamingUrls?.discord,
+      steamId: user.gamingUrls?.steam,
+      bio: user.bio
+    }));
+
     return NextResponse.json(members);
   } catch (error) {
+    console.error('Error fetching members:', error);
     return NextResponse.json(
       { error: 'Failed to fetch members' },
       { status: 500 }
     );
   }
-} 
+}

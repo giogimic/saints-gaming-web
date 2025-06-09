@@ -7,6 +7,11 @@ import { compare, hash } from 'bcryptjs';
 import { getUserByEmail } from '@/lib/storage';
 import { UserRole } from '@/lib/types';
 
+interface SteamProfile {
+  steamid: string;
+  personaname: string;
+}
+
 export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
@@ -23,6 +28,10 @@ export const authOptions: AuthOptions = {
         const user = await getUserByEmail(credentials.email);
         if (!user) {
           throw new Error('No user found with this email');
+        }
+
+        if (!user.password) {
+          throw new Error('No password set for this account');
         }
 
         const isValid = await compare(credentials.password, user.password);
@@ -47,16 +56,14 @@ export const authOptions: AuthOptions = {
     async signIn({ user, account, profile }) {
       if (account?.provider === 'steam') {
         try {
-          // Get Steam ID from profile
-          const steamId = profile?.steamid;
+          const steamProfile = profile as SteamProfile;
+          const steamId = steamProfile.steamid;
           if (!steamId) return false;
 
-          // Check if user exists
           const users = await getUsers();
           const existingUser = users.find(u => u.steamId === steamId);
 
           if (existingUser) {
-            // Update last login
             await saveUser({
               ...existingUser,
               lastLogin: new Date().toISOString()
@@ -64,14 +71,13 @@ export const authOptions: AuthOptions = {
             return true;
           }
 
-          // Create new user
           const newUser = {
             id: crypto.randomUUID(),
-            name: profile?.personaname || 'Steam User',
+            name: steamProfile.personaname || 'Steam User',
             email: `${steamId}@steam.local`,
             steamId,
-            role: 'member' as UserRole,
-            emailVerified: true,
+            role: UserRole.MEMBER,
+            emailVerified: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lastLogin: new Date().toISOString(),
@@ -91,14 +97,12 @@ export const authOptions: AuthOptions = {
         }
       }
 
-      // Handle credentials provider
       if (account?.provider === 'credentials') {
         try {
           const users = await getUsers();
           const existingUser = users.find(u => u.email === user.email);
 
           if (existingUser) {
-            // Update last login
             await saveUser({
               ...existingUser,
               lastLogin: new Date().toISOString()
@@ -106,13 +110,12 @@ export const authOptions: AuthOptions = {
             return true;
           }
 
-          // Create new user
           const newUser = {
             id: crypto.randomUUID(),
             name: user.name || 'User',
             email: user.email!,
-            role: (user.email === 'matthewatoope@gmail.com' ? 'admin' : 'member') as UserRole,
-            emailVerified: true,
+            role: (user.email === 'matthewatoope@gmail.com' ? UserRole.ADMIN : UserRole.MEMBER),
+            emailVerified: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lastLogin: new Date().toISOString(),
@@ -152,7 +155,8 @@ export const authOptions: AuthOptions = {
         token.role = user.role;
       }
       if (account?.provider === 'steam' && profile) {
-        token.steamId = profile.steamid;
+        const steamProfile = profile as SteamProfile;
+        token.steamId = steamProfile.steamid;
       }
       return token;
     },
