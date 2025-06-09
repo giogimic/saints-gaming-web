@@ -12,8 +12,8 @@ import { GlobalErrorBoundary } from '@/components/global-error-boundary';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'SaintsGaming',
-  description: 'Welcome to SaintsGaming - Your Ultimate Gaming Community',
+  title: 'SaintsGaming - Gaming Community',
+  description: 'Join the SaintsGaming community for gaming discussions, events, and more.',
   icons: {
     icon: '/favicon.ico',
   },
@@ -25,20 +25,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <AuthProvider>
           <GlobalErrorBoundary>
-            <div className="min-h-screen flex flex-col">
+            <div className="flex min-h-screen flex-col">
               <MainNav />
               <main className="flex-1">
                 {children}
               </main>
               <Footer />
-              <CookieConsent />
-              <AgeVerification />
-              <Toaster />
             </div>
+            <CookieConsent />
+            <AgeVerification />
+            <Toaster />
           </GlobalErrorBoundary>
         </AuthProvider>
       </body>
