@@ -167,4 +167,22 @@ export async function checkPermission(
 
 export function getPermissionsForRole(role: string): Permission[] {
   return ROLE_PERMISSIONS[role as UserRole] || [];
-} 
+}
+
+export const PERMISSIONS: Record<Permission, string> = {
+  'view:forum': 'View forum content',
+  'create:post': 'Create new posts',
+  'edit:own-post': 'Edit own posts',
+  'delete:own-post': 'Delete own posts',
+  'vote:post': 'Vote on posts',
+  'edit:page': 'Edit page content',
+  'manage:categories': 'Manage forum categories',
+  'manage:users': 'Manage user accounts',
+  'manage:roles': 'Manage user roles',
+  'manage:settings': 'Manage site settings',
+  'edit:posts': 'Edit any post',
+  'delete:posts': 'Delete any post',
+  'edit:comments': 'Edit any comment',
+  'delete:comments': 'Delete any comment',
+  'manage:content': 'Manage all content',
+}; 

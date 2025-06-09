@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,1
+  DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -23,6 +23,43 @@ export function AdminToolbar() {
   const [pageContent, setPageContent] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
+  const handleDoubleClick = (element: HTMLElement) => {
+    if (element.tagName === 'IMG') {
+      setImageUrl(element.getAttribute('src') || '');
+    } else {
+      setPageContent(element.textContent || '');
+    }
+    setEditPageOpen(true);
+  };
+
+  useEffect(() => {
+    if (!session?.user || !hasPermission(session.user.role as UserRole, 'edit:page')) {
+      return;
+    }
+
+    const elements = document.querySelectorAll('p, img');
+    
+    const handleDoubleClickEvent = (e: Event) => {
+      const element = e.target as HTMLElement;
+      handleDoubleClick(element);
+    };
+
+    elements.forEach((element) => {
+      element.addEventListener('dblclick', handleDoubleClickEvent);
+    });
+
+    return () => {
+      elements.forEach((element) => {
+        element.removeEventListener('dblclick', handleDoubleClickEvent);
+      });
+    };
+  }, [session?.user]);
+
+  const handleSavePageContent = () => {
+    console.log('Saving page content:', pageContent);
+    setEditPageOpen(false);
+  };
+
   // Add detailed debug logging
   console.log('AdminToolbar - Full Session:', session);
   console.log('AdminToolbar - User:', session?.user);
@@ -38,35 +75,6 @@ export function AdminToolbar() {
     console.log('AdminToolbar - No permission for edit:page');
     return null;
   }
-
-  const handleSavePageContent = () => {
-    // Implement the logic to save the page content
-    console.log('Saving page content:', pageContent);
-    setEditPageOpen(false);
-  };
-
-  const handleDoubleClick = (element: HTMLElement) => {
-    if (element.tagName === 'IMG') {
-      setImageUrl(element.getAttribute('src') || '');
-    } else {
-      setPageContent(element.textContent || '');
-    }
-    setEditPageOpen(true);
-  };
-
-  useEffect(() => {
-    const elements = document.querySelectorAll('p, img');
-    const handleDoubleClickEvent = (element: HTMLElement) => handleDoubleClick(element);
-    elements.forEach((element) => {
-      element.addEventListener('dblclick', () => handleDoubleClickEvent(element as HTMLElement));
-    });
-
-    return () => {
-      elements.forEach((element) => {
-        element.removeEventListener('dblclick', () => handleDoubleClickEvent(element as HTMLElement));
-      });
-    };
-  }, []);
 
   return (
     <>

@@ -141,7 +141,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   useEffect(() => {
     async function fetchCategory() {
       try {
-        const response = await fetch(`/api/forum/categories/${params.categorySlug}`);
+        const response = await fetch(`/api/forum/categories/by-slug/${params.categorySlug}`);
         if (!response.ok) {
           throw new Error('Failed to fetch category');
         }

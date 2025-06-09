@@ -1,6 +1,5 @@
 import { Suspense } from 'react';
-import { prisma } from '@/lib/prisma';
-import { ThreadDetail } from '@/components/forum/thread-detail';
+import { ThreadDetail } from '@/app/components/forum/thread-detail';
 import { notFound } from 'next/navigation';
 
 interface ThreadPageProps {
@@ -10,64 +9,56 @@ interface ThreadPageProps {
   };
 }
 
-async function getThread(categorySlug: string, threadSlug: string) {
-  const thread = await prisma.thread.findFirst({
-    where: {
-      slug: threadSlug,
-      category: {
-        slug: categorySlug,
-      },
-    },
-    include: {
-      author: {
-        select: {
-          id: true,
-          name: true,
-          image: true,
-        },
-      },
-      posts: {
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-            },
-          },
-          comments: {
-            include: {
-              author: {
-                select: {
-                  id: true,
-                  name: true,
-                  image: true,
-                },
-              },
-            },
-            orderBy: {
-              createdAt: 'asc',
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
-      },
-    },
-  });
+interface Post {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: {
+    id: string;
+    name: string;
+    image: string | null;
+  };
+  comments: Array<{
+    id: string;
+    content: string;
+    createdAt: string;
+    author: {
+      id: string;
+      name: string;
+      image: string | null;
+    };
+  }>;
+}
 
-  if (!thread) {
-    return null;
+interface Thread {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  isPinned: boolean;
+  isLocked: boolean;
+  author: {
+    id: string;
+    name: string;
+    image: string | null;
+  };
+  posts: Post[];
+}
+
+async function getThread(categorySlug: string, threadSlug: string): Promise<Thread | null> {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_APP_URL}/api/forum/threads/by-slug/${threadSlug}?categorySlug=${categorySlug}`,
+    { cache: 'no-store' }
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
+    throw new Error('Failed to fetch thread');
   }
 
-  // Increment view count
-  await prisma.thread.update({
-    where: { id: thread.id },
-    data: { viewCount: { increment: 1 } },
-  });
-
-  return thread;
+  return response.json();
 }
 
 export default async function ThreadPage({ params }: ThreadPageProps) {
@@ -85,7 +76,7 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
             id: thread.id,
             title: thread.title,
             content: thread.content,
-            createdAt: thread.createdAt,
+            createdAt: new Date(thread.createdAt),
             isPinned: thread.isPinned,
             isLocked: thread.isLocked,
             author: {
@@ -95,10 +86,10 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
             },
             tags: [], // TODO: Add tags support
           }}
-          comments={thread.posts.map((post) => ({
+          comments={thread.posts.map((post: Post) => ({
             id: post.id,
             content: post.content,
-            createdAt: post.createdAt,
+            createdAt: new Date(post.createdAt),
             author: {
               id: post.author.id,
               username: post.author.name || 'Anonymous',
@@ -108,7 +99,7 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
             replies: post.comments.map((comment) => ({
               id: comment.id,
               content: comment.content,
-              createdAt: comment.createdAt,
+              createdAt: new Date(comment.createdAt),
               author: {
                 id: comment.author.id,
                 username: comment.author.name || 'Anonymous',
