@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
 import { createUser, getUserByEmail } from '@/lib/db';
-import { UserRole } from '@/lib/types';
+import { UserRole } from '@/lib/permissions';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(req: NextRequest) {
@@ -27,16 +27,27 @@ export async function POST(req: NextRequest) {
     // Hash password
     const hashedPassword = await hash(password, 10);
 
-    // Create user
+    // Create user with default settings
     const user = await createUser({
-      id: uuidv4(),
       email,
       name,
       password: hashedPassword,
       role: UserRole.MEMBER,
       emailVerified: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      settings: {
+        theme: 'system',
+        notifications: true,
+        language: 'en',
+        timezone: 'UTC',
+        emailNotifications: true,
+        darkMode: false,
+        showOnlineStatus: true
+      },
+      gamingProfile: {
+        favoriteGames: [],
+        gamingSetup: [],
+        gamingPreferences: []
+      }
     });
 
     // Remove password from response

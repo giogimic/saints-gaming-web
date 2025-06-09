@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -17,7 +19,7 @@ interface CategoryFormProps {
   category?: {
     id: string;
     name: string;
-    description: string;
+    description: string | null;
   };
 }
 

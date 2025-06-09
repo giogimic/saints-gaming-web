@@ -1,9 +1,11 @@
+import { UserRole } from '@/lib/permissions';
+
 export interface Member {
   id: string;
   name: string;
-  role: 'Admin' | 'Moderator' | 'Member';
+  role: UserRole;
   avatar: string;
-  status: 'Online' | 'Offline' | 'Away';
+  status: 'Online' | 'Offline' | 'Away' | 'Busy';
   games: string[];
   joinDate: string;
   discordId?: string;
@@ -18,20 +20,12 @@ export interface Event {
   date: string;
   time: string;
   participants: number;
-  maxParticipants?: number;
+  maxParticipants: number;
   prize: string;
   game: string;
-  type: 'Tournament' | 'Contest' | 'Community Event';
-  status: 'Upcoming' | 'Ongoing' | 'Completed';
-  registrationDeadline?: string;
+  type: 'Tournament' | 'Contest' | 'Casual' | 'Other';
+  status: 'Upcoming' | 'Ongoing' | 'Completed' | 'Cancelled';
+  registrationDeadline: string;
   rules?: string[];
   discordChannel?: string;
-}
-
-export interface CommunityStats {
-  totalMembers: number;
-  onlineMembers: number;
-  activeEvents: number;
-  totalEvents: number;
-  popularGames: string[];
 } 

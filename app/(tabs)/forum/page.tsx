@@ -1,23 +1,11 @@
-"use client";
-
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/components/ui/use-toast";
-import { hasPermission } from "@/lib/permissions";
-import { ForumPost, ForumCategory } from "@/lib/types";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUp, ArrowDown, Pin } from 'lucide-react';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getCategories } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import Link from 'next/link';
 import { PlusCircle, Edit2, Trash2 } from 'lucide-react';
 import { CategoryForm } from '@/components/forum/category-form';
+import { Button } from '@/components/ui/button';
 
 export default async function ForumPage() {
   const session = await getServerSession(authOptions);

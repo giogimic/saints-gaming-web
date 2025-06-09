@@ -4,60 +4,22 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Users, MessageSquare, Trophy, Calendar } from 'lucide-react';
+import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import type { Member, Event } from '@/types/community';
 import { toast } from '@/components/ui/use-toast';
 import { useRouter } from "next/navigation";
 import { User } from "@/lib/types";
 import md5 from "md5";
+import { Badge } from '@/app/components/ui/badge';
 
 export default function CommunityPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [members, setMembers] = useState<Member[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [membersRes, eventsRes] = await Promise.all([
-          fetch('/api/community/members'),
-          fetch('/api/community/events'),
-        ]);
-
-        if (!membersRes.ok || !eventsRes.ok) {
-          throw new Error('Failed to fetch data');
-        }
-
-        const [membersData, eventsData] = await Promise.all([
-          membersRes.json(),
-          eventsRes.json(),
-        ]);
-
-        setMembers(membersData);
-        setEvents(eventsData);
-      } catch (err) {
-        setError('Failed to load community data');
-        toast({
-          title: 'Error',
-          description: 'Failed to load community data. Please try again later.',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -65,20 +27,31 @@ export default function CommunityPage() {
 
   const fetchUsers = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/api/user');
-      if (!response.ok) throw new Error('Failed to fetch users');
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
       const data = await response.json();
+      console.log('Fetched users:', data); // Debug log
       setUsers(data);
     } catch (error) {
       console.error('Error fetching users:', error);
+      setError('Failed to load users');
+      toast({
+        title: 'Error',
+        description: 'Failed to load users. Please try again later.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredMembers = members.filter(member =>
-    member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.games.some(game => game.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredUsers = users.filter(user =>
+    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (error) {
@@ -86,14 +59,20 @@ export default function CommunityPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-red-500 mb-4">{error}</h2>
-          <Button onClick={() => window.location.reload()}>Try Again</Button>
+          <Button onClick={fetchUsers}>Try Again</Button>
         </div>
       </div>
     );
   }
 
-  if (isLoading) {
-    return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Loading...</h2>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -102,7 +81,7 @@ export default function CommunityPage() {
         <div>
           <h1 className="text-3xl font-bold">Community</h1>
           <p className="text-muted-foreground mt-1">
-            Connect with fellow gamers and join our events
+            Connect with fellow gamers and join our community
           </p>
         </div>
         <div className="relative w-full md:w-auto">
@@ -116,139 +95,97 @@ export default function CommunityPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="members" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="members">
-            <Users className="h-4 w-4 mr-2" />
-            Members
-          </TabsTrigger>
-          <TabsTrigger value="events">
-            <Calendar className="h-4 w-4 mr-2" />
-            Events
-          </TabsTrigger>
-          <TabsTrigger value="discord">
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Discord
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="members" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {users.map((user) => {
-              const gravatarUrl = `https://www.gravatar.com/avatar/${md5(user.email)}?d=identicon&s=200`;
-              return (
-                <Card key={user.id}>
-                  <CardHeader>
-                    <div className="flex items-center gap-4">
-                      <img src={gravatarUrl} alt={user.name} className="w-16 h-16 rounded-full" />
-                      <div>
-                        <CardTitle>{user.name}</CardTitle>
-                        <CardDescription>{user.email}</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">{user.bio || "No bio provided."}</p>
-                    {user.gamingUrls && (
-                      <div className="space-y-2">
-                        {user.gamingUrls.steam && (
-                          <a href={user.gamingUrls.steam} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline block">
-                            Steam Profile
-                          </a>
-                        )}
-                        {user.gamingUrls.discord && (
-                          <a href={user.gamingUrls.discord} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline block">
-                            Discord
-                          </a>
-                        )}
-                        {user.gamingUrls.twitch && (
-                          <a href={user.gamingUrls.twitch} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline block">
-                            Twitch
-                          </a>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                  <CardFooter>
-                    <Link href={`/profile/${user.id}`} className="w-full">
-                      <Button variant="outline" className="w-full">View Profile</Button>
-                    </Link>
-                  </CardFooter>
-                </Card>
-              );
-            })}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="events" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {events.map((event) => (
-              <Card key={event.id}>
+      {filteredUsers.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No users found</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredUsers.map((user) => {
+            const gravatarUrl = `https://www.gravatar.com/avatar/${md5(user.email)}?d=identicon&s=200`;
+            return (
+              <Card key={user.id}>
                 <CardHeader>
-                  <CardTitle>{event.title}</CardTitle>
-                  <CardDescription>
-                    {new Date(event.date).toLocaleDateString()} at {event.time}
-                  </CardDescription>
+                  <div className="flex items-center gap-4">
+                    <img 
+                      src={user.avatar || gravatarUrl} 
+                      alt={user.name} 
+                      className="w-16 h-16 rounded-full object-cover"
+                    />
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        {user.name}
+                        <Badge variant={
+                          user.role === 'admin' ? 'destructive' :
+                          user.role === 'moderator' ? 'default' :
+                          'secondary'
+                        }>
+                          {user.role}
+                        </Badge>
+                      </CardTitle>
+                      <CardDescription>{user.email}</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground mb-4">
-                    {event.description}
+                    {user.bio || "No bio provided."}
                   </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      <span>{event.participants}/{event.maxParticipants} participants</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-4 w-4" />
-                      <span>{event.prize} prize pool</span>
-                    </div>
+                  <div className="space-y-2">
+                    {user.steamId && (
+                      <a 
+                        href={`https://steamcommunity.com/profiles/${user.steamId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-blue-500 hover:underline"
+                      >
+                        <span className="text-[#171a21]">Steam</span>
+                        Profile
+                      </a>
+                    )}
+                    {user.discordId && (
+                      <a 
+                        href={`https://discord.com/users/${user.discordId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-blue-500 hover:underline"
+                      >
+                        <span className="text-[#5865F2]">Discord</span>
+                      </a>
+                    )}
+                    {user.twitchId && (
+                      <a 
+                        href={`https://twitch.tv/${user.twitchId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-blue-500 hover:underline"
+                      >
+                        <span className="text-[#9146FF]">Twitch</span>
+                      </a>
+                    )}
+                    {user.socialLinks?.map((link, index) => (
+                      <a
+                        key={index}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-blue-500 hover:underline"
+                      >
+                        {link.platform}
+                      </a>
+                    ))}
                   </div>
-                  {event.rules && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium mb-2">Rules:</h4>
-                      <ul className="text-sm text-muted-foreground list-disc list-inside">
-                        {event.rules.map((rule, index) => (
-                          <li key={index}>{rule}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full" asChild>
-                    <Link href={`/events/${event.id}`}>Register Now</Link>
-                  </Button>
+                  <Link href={`/profile/${user.id}`} className="w-full">
+                    <Button variant="outline" className="w-full">View Profile</Button>
+                  </Link>
                 </CardFooter>
               </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="discord" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Join Our Discord</CardTitle>
-              <CardDescription>
-                Connect with our community on Discord
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Join our Discord server to chat with other members, get updates about events,
-                and participate in community discussions.
-              </p>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full" asChild>
-                <a href={process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || 'https://discord.gg/saintsgaming'} target="_blank" rel="noopener noreferrer">
-                  Join Discord
-                </a>
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 } 

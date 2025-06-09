@@ -12,22 +12,63 @@ export interface UserSettings {
 
 export interface UserGamingProfile {
   favoriteGames: string[];
-  gamingSetup: {
-    pc?: {
-      cpu: string;
-      gpu: string;
-    };
-    console?: {
-      type: string;
-      model: string;
-    };
-  };
-  gamingPreferences: {
-    favoriteGenres: string[];
-    playStyle: string[];
-    multiplayer: boolean;
-    competitive: boolean;
-  };
+  gamingSetup: string[];
+  gamingPreferences: string[];
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  createdAt: string;
+  updatedAt: string;
+  emailVerified: string;
+  password: string;
+  bio?: string;
+  avatar?: string;
+  steamId?: string;
+  discordId?: string;
+  twitchId?: string;
+  lastLogin?: string;
+  settings?: UserSettings;
+  gamingProfile?: UserGamingProfile;
+  socialLinks?: SocialLink[];
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  description: string;
+  order: number;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Post {
+  id: string;
+  title: string;
+  content: string;
+  authorId: string;
+  categoryId: string;
+  published: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Reply {
+  id: string;
+  content: string;
+  authorId: string;
+  postId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SocialLink {
+  platform: string;
+  url: string;
 }
 
 export interface GamingUrls {
@@ -36,66 +77,26 @@ export interface GamingUrls {
   twitch: string;
 }
 
-export interface User {
-  id: string;
-  name: string;
-  email: string | null;
-  image?: string;
-  role: UserRole;
-  emailVerified?: string;
-  createdAt: string;
-  updatedAt: string;
-  lastLogin?: string;
-  preferences?: {
-    theme: string;
-    notifications: boolean;
-  };
-  username?: string;
-  avatar?: string;
-  discordId?: string;
-  posts?: number;
-  reputation?: number;
-  settings?: UserSettings;
-  gamingProfile?: UserGamingProfile;
-  gamingUrls?: GamingUrls;
-  socialLinks?: {
-    platform: string;
-    url: string;
-  }[];
-}
-
-export interface Post {
-  id: string;
-  title: string;
-  content: string;
-  authorId: string;
-  authorName: string;
-  categoryId: string;
-  createdAt: string;
-  updatedAt: string;
-  isPinned: boolean;
-  votes: Vote[];
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Vote {
+export interface PostVote {
   id: string;
   postId: string;
   userId: string;
   value: number;
   createdAt: string;
+  updatedAt: string;
+  post?: ForumPost;
+  user?: User;
 }
 
-export interface Session {
-  user: User;
-  expires: string;
+export interface ReplyVote {
+  id: string;
+  replyId: string;
+  userId: string;
+  value: number;
+  createdAt: string;
+  updatedAt: string;
+  reply?: ForumReply;
+  user?: User;
 }
 
 export interface ForumCategory {
@@ -103,8 +104,7 @@ export interface ForumCategory {
   name: string;
   description: string;
   order: number;
-  createdAt: string;
-  updatedAt: string;
+  posts?: ForumPost[];
 }
 
 export interface ForumPost {
@@ -112,15 +112,16 @@ export interface ForumPost {
   title: string;
   content: string;
   authorId: string;
-  authorName?: string;
   categoryId: string;
-  isPinned: boolean;
   createdAt: string;
   updatedAt: string;
-  votes?: Array<{
-    userId: string;
-    value: number;
-  }>;
+  isPinned: boolean;
+  isLocked: boolean;
+  viewCount: number;
+  author?: User;
+  category?: ForumCategory;
+  replies?: ForumReply[];
+  votes?: PostVote[];
 }
 
 export interface ForumReply {
@@ -130,6 +131,10 @@ export interface ForumReply {
   postId: string;
   createdAt: string;
   updatedAt: string;
+  isSolution: boolean;
+  author?: User;
+  post?: ForumPost;
+  votes?: ReplyVote[];
 }
 
 export interface PageContent {

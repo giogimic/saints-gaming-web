@@ -49,8 +49,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   ],
 };
 
-export const DEFAULT_ADMIN_EMAIL = 'matthewatoope@gmail.com';
-
 export type Permission = 
   | 'view:forum'
   | 'create:post'
@@ -69,7 +67,7 @@ export type Permission =
 export function hasPermission(userRole: UserRole, permission: Permission): boolean {
   if (!userRole || !permission) return false;
 
-  // Always grant admin permissions to the default admin email
+  // Admin has all permissions
   if (userRole === UserRole.ADMIN) return true;
 
   // Check if the permission is in the role's permissions
