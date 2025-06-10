@@ -5,7 +5,8 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -20,26 +21,30 @@ enum UserRole {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          String    @default("member")
-  bio           String?
-  steamId       String?   @unique
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLogin     DateTime?
-  accounts      Account[]
-  sessions      Session[]
-  socialLinks   SocialLink[]
-  threads       Thread[]
-  posts         Post[]
-  comments      Comment[]
-  settings      UserSettings?        @relation("UserSettingsRelation")
-  gamingProfile UserGamingProfile?   @relation("UserGamingProfileRelation")
+  id               String             @id @default(cuid())
+  name             String?
+  email            String?            @unique
+  emailVerified    DateTime?
+  image            String?
+  password         String?
+  role             UserRole           @default(member)
+  bio              String?
+  steamId          String?            @unique
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  lastLogin        DateTime?
+  accounts         Account[]
+  sessions         Session[]
+  socialLinks      SocialLink[]
+  threads          Thread[]
+  posts            Post[]
+  comments         Comment[]
+  news             News[]
+  settings         UserSettings?      @relation("UserSettingsRelation")
+  gamingProfile    UserGamingProfile? @relation("UserGamingProfileRelation")
+  pages            Page[]
+  contentBlocks    ContentBlock[]
+  contentRevisions ContentRevision[]
 }
 
 model Account {
@@ -78,29 +83,29 @@ model VerificationToken {
 }
 
 model UserSettings {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  theme             String   @default("system")
-  notifications     Boolean  @default(true)
-  language          String   @default("en")
-  timezone          String   @default("UTC")
-  emailNotifications Boolean @default(true)
-  darkMode          Boolean  @default(false)
-  showOnlineStatus  Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  user              User     @relation("UserSettingsRelation", fields: [userId], references: [id])
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  theme              String   @default("system")
+  notifications      Boolean  @default(true)
+  language           String   @default("en")
+  timezone           String   @default("UTC")
+  emailNotifications Boolean  @default(true)
+  darkMode           Boolean  @default(false)
+  showOnlineStatus   Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation("UserSettingsRelation", fields: [userId], references: [id])
 }
 
 model UserGamingProfile {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  favoriteGames      String   @default("[]")
-  gamingSetup        String   @default("[]")
-  gamingPreferences  String  @default("[]")
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  user               User     @relation("UserGamingProfileRelation", fields: [userId], references: [id])
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  favoriteGames     String   @default("[]")
+  gamingSetup       String   @default("[]")
+  gamingPreferences String   @default("[]")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation("UserGamingProfileRelation", fields: [userId], references: [id])
 }
 
 model SocialLink {
@@ -149,29 +154,100 @@ model Comment {
 }
 
 model Page {
-  id        String   @id @default(cuid())
-  slug      String   @unique
+  id              String            @id @default(cuid())
+  slug            String            @unique
+  title           String
+  description     String?
+  isPublished     Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  createdBy       User              @relation(fields: [createdById], references: [id])
+  createdById     String
+  blocks          ContentBlock[]
+  metadata        Json? // SEO and other metadata
+  template        String? // Optional template override
+  parent          Page?             @relation("PageHierarchy", fields: [parentId], references: [id])
+  parentId        String?
+  children        Page[]            @relation("PageHierarchy")
+  ContentRevision ContentRevision[]
+
+  @@index([slug])
+  @@index([createdById])
+}
+
+model ContentBlock {
+  id              String            @id @default(cuid())
+  type            String // e.g., "text", "image", "video", "carousel", "grid", etc.
+  title           String?
+  content         Json // Flexible content storage
+  order           Int               @default(0)
+  isPublished     Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  createdBy       User              @relation(fields: [createdById], references: [id])
+  createdById     String
+  page            Page              @relation(fields: [pageId], references: [id])
+  pageId          String
+  settings        Json? // Additional settings for the block
+  metadata        Json? // SEO and other metadata
+  ContentRevision ContentRevision[]
+
+  @@index([pageId])
+  @@index([type])
+}
+
+model ContentRevision {
+  id        String        @id @default(cuid())
   content   String
-  imageUrl  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  type      String // 'page' or 'block'
+  entityId  String // ID of the page or block
+  createdAt DateTime      @default(now())
+  authorId  String
+  author    User          @relation(fields: [authorId], references: [id])
+  page      Page?         @relation(fields: [entityId], references: [id])
+  block     ContentBlock? @relation(fields: [entityId], references: [id])
+
+  @@index([authorId])
+  @@index([entityId])
 }
 
 model Thread {
-  id          String   @id @default(cuid())
-  title       String
-  slug        String   @unique
-  content     String
-  isPinned    Boolean  @default(false)
-  isLocked    Boolean  @default(false)
-  viewCount   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  authorId    String
-  categoryId  String
-  author      User     @relation(fields: [authorId], references: [id])
-  category    Category @relation(fields: [categoryId], references: [id])
-  posts       Post[]
+  id         String   @id @default(cuid())
+  title      String
+  slug       String   @unique
+  content    String
+  isPinned   Boolean  @default(false)
+  isLocked   Boolean  @default(false)
+  viewCount  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  authorId   String
+  categoryId String
+  author     User     @relation(fields: [authorId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id])
+  posts      Post[]
 
   @@unique([categoryId, slug])
+}
+
+model News {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  excerpt   String?
+  imageUrl  String?
+  published Boolean  @default(false)
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId])
+}
+
+model SiteSettings {
+  id        String   @id @default("1")
+  settings  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

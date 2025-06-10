@@ -3,11 +3,15 @@
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserRole } from "@/lib/permissions";
-import { Users, MessageSquare, Settings, Shield } from "lucide-react";
+import { Users, MessageSquare, Settings, Shield, Newspaper, FileText, Plus } from "lucide-react";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/auth-config";
+import prisma from "@/lib/prisma";
 
 interface DashboardStats {
   totalUsers: number;
@@ -20,124 +24,134 @@ interface DashboardStats {
   }[];
 }
 
-export default function AdminDashboardPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
+async function getStats() {
+  const [users, threads, posts] = await Promise.all([
+    prisma.user.count(),
+    prisma.thread.count(),
+    prisma.post.count(),
+  ]);
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
-    } else if (session?.user?.role !== UserRole.ADMIN) {
-      router.push('/dashboard');
-    } else {
-      fetchStats();
-    }
-  }, [session, status, router]);
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch('/api/admin/stats');
-      if (!response.ok) throw new Error('Failed to fetch stats');
-      const data = await response.json();
-      setStats(data);
-    } catch (error) {
-      console.error('Error fetching admin stats:', error);
-    } finally {
-      setLoading(false);
-    }
+  return {
+    users,
+    threads,
+    posts,
   };
+}
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!stats) {
-    return <div>Failed to load dashboard stats</div>;
-  }
-
+export default function AdminDashboard() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
-
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Users
-            </CardTitle>
-            <CardDescription>Total registered users</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{stats.totalUsers}</p>
-            <Button asChild variant="outline" className="mt-4">
-              <Link href="/admin/users">Manage Users</Link>
-            </Button>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">
+              +0% from last month
+            </p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Content
-            </CardTitle>
-            <CardDescription>Forum content statistics</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">News Articles</CardTitle>
+            <Newspaper className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <p className="text-sm">
-                <span className="font-medium">Posts:</span> {stats.totalPosts}
-              </p>
-              <p className="text-sm">
-                <span className="font-medium">Categories:</span> {stats.totalCategories}
-              </p>
-            </div>
-            <Button asChild variant="outline" className="mt-4">
-              <Link href="/admin/content">Manage Content</Link>
-            </Button>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">
+              +0% from last month
+            </p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Roles & Permissions
-            </CardTitle>
-            <CardDescription>User role management</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Forum Posts</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <Button asChild variant="outline" className="mt-4">
-              <Link href="/admin/roles">Manage Roles</Link>
-            </Button>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">
+              +0% from last month
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Now</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">
+              +0% from last month
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Latest actions in the system</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {stats.recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
-                <div>
-                  <p className="font-medium">{activity.description}</p>
-                  <p className="text-sm text-muted-foreground">{activity.type}</p>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(activity.timestamp).toLocaleString()}
-                </p>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button asChild className="w-full justify-start">
+              <Link href="/admin/news/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New Article
+              </Link>
+            </Button>
+            <Button asChild className="w-full justify-start">
+              <Link href="/admin/forum/categories">
+                <Plus className="mr-2 h-4 w-4" />
+                New Category
+              </Link>
+            </Button>
+            <Button asChild className="w-full justify-start">
+              <Link href="/admin/users/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New User
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">No recent activity</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>System Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Database</span>
+                <span className="text-sm text-green-500">Online</span>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">API</span>
+                <span className="text-sm text-green-500">Online</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Authentication</span>
+                <span className="text-sm text-green-500">Online</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 } 

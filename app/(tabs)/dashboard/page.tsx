@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-config";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { UserProfile } from "@/components/dashboard/user-profile";
 import { CommunitySection } from "@/components/dashboard/community-section";
 import { EventsSection } from "@/components/dashboard/events-section";
@@ -91,22 +91,29 @@ export default async function DashboardPage() {
   }
 
   const { user, stats } = data;
+  // Ensure name and email are always strings for dashboard section components
+  const safeUser: { id: string; name: string; role: string; email: string } = {
+    id: user.id,
+    name: user.name || "User",
+    role: String(user.role),
+    email: user.email || "",
+  };
 
   return (
     <div className="container mx-auto p-4 space-y-6">
       <div className="grid gap-6 md:grid-cols-2">
-        <UserProfile user={user} stats={stats} />
-        <CommunitySection user={user} />
+        <UserProfile user={{ ...user, name: safeUser.name }} stats={stats} />
+        <CommunitySection user={safeUser} />
       </div>
       <div className="grid gap-6 md:grid-cols-2">
-        <EventsSection user={user} />
-        <GameIntegrations user={user} />
+        <EventsSection user={safeUser} />
+        <GameIntegrations user={safeUser} />
       </div>
       <div className="grid gap-6 md:grid-cols-2">
-        <PerformanceSection user={user} />
-        <StoreSection user={user} />
+        <PerformanceSection user={safeUser} />
+        <StoreSection user={safeUser} />
       </div>
-      <SettingsSection user={user} />
+      <SettingsSection user={safeUser} />
     </div>
   );
 } 

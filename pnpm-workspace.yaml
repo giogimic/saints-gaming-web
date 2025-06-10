@@ -5,3 +5,4 @@ onlyBuiltDependencies:
   - prisma
   - sharp
   - sqlite3
+  - unrs-resolver

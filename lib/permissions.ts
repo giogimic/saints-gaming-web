@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 
 export enum UserRole {
   ADMIN = "admin",
@@ -110,6 +110,7 @@ export const DEFAULT_CATEGORIES = [
   {
     id: 'general',
     name: 'General',
+    slug: 'general',
     description: 'General discussions about gaming and community',
     order: 1,
     isDefault: true
@@ -117,6 +118,7 @@ export const DEFAULT_CATEGORIES = [
   {
     id: 'ark-ascended',
     name: 'ARK: Survival Ascended Server',
+    slug: 'ark-ascended',
     description: 'Discussions about our ARK: Survival Ascended server',
     order: 2,
     isDefault: true
@@ -124,6 +126,7 @@ export const DEFAULT_CATEGORIES = [
   {
     id: 'minecraft',
     name: 'Minecraft Server',
+    slug: 'minecraft',
     description: 'Discussions about our Minecraft server',
     order: 3,
     isDefault: true
@@ -131,6 +134,7 @@ export const DEFAULT_CATEGORIES = [
   {
     id: 'support',
     name: 'Support',
+    slug: 'support',
     description: 'Get help with technical issues or server problems',
     order: 4,
     isDefault: true
@@ -138,6 +142,7 @@ export const DEFAULT_CATEGORIES = [
   {
     id: 'spam',
     name: 'Spam',
+    slug: 'spam',
     description: 'Off-topic discussions and fun content',
     order: 5,
     isDefault: true

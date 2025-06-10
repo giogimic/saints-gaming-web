@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth-config';
 import { getServerSession } from 'next-auth';
 import type { UserSession } from "@/lib/auth";
 import { UserRole } from '@prisma/client';
-import { prisma } from './prisma';
+import prisma from './prisma';
 
 export class ApiError extends Error {
   constructor(

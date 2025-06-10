@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserRole } from "@/lib/permissions";
-import { Users, UserPlus, Search, MoreVertical, Pencil, Trash2, Shield } from "lucide-react";
+import { Users, UserPlus, Search, MoreVertical, Pencil, Trash2, Shield, Plus } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import {
@@ -190,7 +190,7 @@ export default function UsersPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value={UserRole.USER}>User</SelectItem>
+                <SelectItem value={UserRole.MEMBER}>Member</SelectItem>
                 <SelectItem value={UserRole.MODERATOR}>Moderator</SelectItem>
                 <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
               </SelectContent>

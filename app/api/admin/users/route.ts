@@ -7,81 +7,110 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 // GET: List all users (admin only)
-export async function GET() {
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user || session.user.role !== "admin") {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
   try {
-    const session = await getServerSession(authOptions);
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const skip = (page - 1) * limit;
+    const role = searchParams.get("role");
+    const search = searchParams.get("search");
 
-    if (!session || session.user.role !== UserRole.ADMIN) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
+    const where = {
+      ...(role ? { role } : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    };
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        steamId: true,
-        discordId: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          role: true,
+          createdAt: true,
+          lastLogin: true,
+          _count: {
+            select: {
+              threads: true,
+              posts: true,
+              comments: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      users,
+      total,
+      pages: Math.ceil(total / limit),
     });
-
-    return NextResponse.json(users);
   } catch (error) {
     console.error("[USERS_GET]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    return new NextResponse("Internal error", { status: 500 });
   }
 }
 
 // POST: Create a new user (admin only)
 export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user || session.user.role !== "admin") {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || session.user.role !== UserRole.ADMIN) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
     const body = await req.json();
-    const { name, email, password, role, steamId, discordId } = body;
+    const { name, email, password, role } = body;
 
-    if (!name || !email || !password || !role) {
-      return new NextResponse("Missing required fields", { status: 400 });
+    if (!name || !email || !password) {
+      return new NextResponse("Name, email, and password are required", { status: 400 });
     }
 
-    // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
-      return new NextResponse("User already exists", { status: 400 });
+      return new NextResponse("Email already exists", { status: 400 });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role,
-        steamId,
-        discordId,
+        role: role || "member",
       },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        steamId: true,
-        discordId: true,
         createdAt: true,
       },
     });
@@ -89,7 +118,7 @@ export async function POST(req: Request) {
     return NextResponse.json(user);
   } catch (error) {
     console.error("[USERS_POST]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    return new NextResponse("Internal error", { status: 500 });
   }
 }
 

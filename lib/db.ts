@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import type { User as PrismaUser, UserSettings as PrismaUserSettings, UserGamingProfile as PrismaUserGamingProfile, SocialLink as PrismaSocialLink, Category, Post, Reply } from '@prisma/client';
+import type { User as PrismaUser, UserSettings as PrismaUserSettings, UserGamingProfile as PrismaUserGamingProfile, SocialLink as PrismaSocialLink, Category, Post } from '@prisma/client';
 import { User, UserSettings, UserGamingProfile, ForumPost, ForumReply, ForumCategory } from './types';
 import { UserRole, DEFAULT_CATEGORIES } from './permissions';
 
@@ -24,6 +24,7 @@ async function initDatabase() {
         data: DEFAULT_CATEGORIES.map(cat => ({
           id: cat.id,
           name: cat.name,
+          slug: cat.slug,
           description: cat.description,
           order: cat.order,
           isDefault: cat.isDefault
@@ -51,16 +52,13 @@ function convertPrismaUserToUser(prismaUser: PrismaUser & {
     name: prismaUser.name || '',
     email: prismaUser.email || '',
     role: prismaUser.role as UserRole,
-    createdAt: prismaUser.createdAt.toISOString(),
-    updatedAt: prismaUser.updatedAt.toISOString(),
-    emailVerified: prismaUser.emailVerified?.toISOString() || '',
+    createdAt: prismaUser.createdAt,
+    updatedAt: prismaUser.updatedAt,
+    emailVerified: prismaUser.emailVerified || undefined,
     password: prismaUser.password || '',
     bio: prismaUser.bio || undefined,
-    avatar: prismaUser.avatar || undefined,
     steamId: prismaUser.steamId || undefined,
-    discordId: prismaUser.discordId || undefined,
-    twitchId: prismaUser.twitchId || undefined,
-    lastLogin: prismaUser.lastLogin?.toISOString(),
+    lastLogin: prismaUser.lastLogin || undefined,
     settings: prismaUser.settings ? {
       theme: prismaUser.settings.theme as "light" | "dark" | "system",
       notifications: prismaUser.settings.notifications,
@@ -147,13 +145,10 @@ export async function createUser(user: Partial<User>): Promise<User> {
         email: user.email || '',
         password: user.password,
         role: user.role || UserRole.MEMBER,
-        emailVerified: user.emailVerified ? new Date(user.emailVerified) : null,
+        emailVerified: user.emailVerified || null,
         bio: user.bio,
-        avatar: user.avatar,
         steamId: user.steamId,
-        discordId: user.discordId,
-        twitchId: user.twitchId,
-        lastLogin: user.lastLogin ? new Date(user.lastLogin) : null,
+        lastLogin: user.lastLogin || null,
         settings: user.settings ? {
           create: {
             theme: user.settings.theme,
@@ -207,13 +202,10 @@ export async function updateUser(idOrUser: string | User, userData?: Partial<Use
         name: data.name,
         email: data.email,
         role: data.role,
-        emailVerified: data.emailVerified ? new Date(data.emailVerified) : undefined,
+        emailVerified: data.emailVerified || undefined,
         bio: data.bio,
-        avatar: data.avatar,
         steamId: data.steamId,
-        discordId: data.discordId,
-        twitchId: data.twitchId,
-        lastLogin: data.lastLogin ? new Date(data.lastLogin) : undefined,
+        lastLogin: data.lastLogin || undefined,
         settings: data.settings ? {
           upsert: {
             create: {
@@ -249,6 +241,13 @@ export async function updateUser(idOrUser: string | User, userData?: Partial<Use
               gamingPreferences: JSON.stringify(data.gamingProfile.gamingPreferences)
             }
           }
+        } : undefined,
+        socialLinks: data.socialLinks ? {
+          deleteMany: {},
+          create: data.socialLinks.map(link => ({
+            platform: link.platform,
+            url: link.url
+          }))
         } : undefined
       },
       include: {
@@ -292,6 +291,7 @@ export async function createCategory(category: Partial<Category>): Promise<Categ
     return await prisma.category.create({
       data: {
         name: category.name || '',
+        slug: category.slug || '',
         description: category.description,
         order: category.order || 0,
         isDefault: category.isDefault || false
@@ -309,6 +309,7 @@ export async function updateCategory(id: string, category: Partial<Category>): P
       where: { id },
       data: {
         name: category.name,
+        slug: category.slug,
         description: category.description,
         order: category.order,
         isDefault: category.isDefault

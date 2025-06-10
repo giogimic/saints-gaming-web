@@ -21,18 +21,24 @@ A modern Next.js + shadcn/ui application with forum functionality, built with cu
 
 ## Tech Stack
 
-- Next.js 15 (App Router)
+- Next.js 15.3.3 (App Router)
 - React 19
-- TypeScript
-- Tailwind CSS
+- TypeScript 5.3.3
+- Tailwind CSS 3.4
 - shadcn/ui
-- Prisma (SQLite)
-- NextAuth.js
-- Framer Motion
-- TipTap (Rich Text Editor)
+- Prisma 5.10.2 (SQLite)
+- NextAuth.js 4.24.6
+- Framer Motion 11.0.8
+- TipTap 2.2.4 (Rich Text Editor)
 - ProseMirror
 - Radix UI
 - Lucide Icons
+
+## Prerequisites
+
+- Node.js 18.17 or later
+- pnpm 8.0 or later
+- SQLite 3
 
 ## Getting Started
 
@@ -45,6 +51,7 @@ cp .env.example .env
 # Edit .env with your configuration
 
 # Initialize the database
+pnpm prisma generate
 pnpm prisma db push
 
 # Create an admin user
@@ -76,23 +83,6 @@ pnpm dlx shadcn-ui@latest add command
 pnpm dlx shadcn-ui@latest add tooltip
 ```
 
-## Additional Dependencies
-
-```bash
-# UI and animations
-pnpm add framer-motion
-pnpm add @radix-ui/react-hover-card
-pnpm add @radix-ui/react-dialog
-pnpm add @radix-ui/react-tooltip
-pnpm add cmdk
-pnpm add class-variance-authority
-pnpm add tailwindcss-animate
-
-# Rich text editor
-pnpm add @tiptap/react @tiptap/starter-kit @tiptap/extension-link @tiptap/extension-image
-pnpm add prosemirror-adapter prosemirror-state prosemirror-view
-```
-
 ## Environment Variables
 
 Required environment variables:
@@ -113,11 +103,18 @@ STEAM_API_KEY="your-steam-api-key"
 
 ```
 ├── app/                 # Next.js app directory
+│   ├── api/            # API routes
+│   ├── admin/          # Admin pages
+│   ├── auth/           # Authentication pages
+│   └── forum/          # Forum pages
 ├── components/         # React components
 │   ├── ui/            # UI components
 │   ├── forum/         # Forum components
 │   └── admin/         # Admin components
 ├── lib/               # Utility functions
+│   ├── auth.ts       # Authentication utilities
+│   ├── prisma.ts     # Database client
+│   └── utils.ts      # Helper functions
 ├── prisma/            # Database schema
 └── public/            # Static assets
 ```
@@ -129,6 +126,19 @@ STEAM_API_KEY="your-steam-api-key"
 - Run `pnpm start` to start the production server
 - Run `pnpm lint` to check for linting issues
 - Run `pnpm format` to format code
+
+## Database Management
+
+```bash
+# Generate Prisma Client
+pnpm prisma generate
+
+# Push schema changes to database
+pnpm prisma db push
+
+# Open Prisma Studio
+pnpm prisma studio
+```
 
 ## Contributing
 

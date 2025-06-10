@@ -1,24 +1,17 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { MainNav } from '@/components/main-nav';
-import { Footer } from '@/components/footer';
+import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/components/auth-provider';
-import { CookieConsent } from '@/components/cookie-consent';
-import { AgeVerification } from '@/components/age-verification';
-import { GlobalErrorBoundary } from '@/components/global-error-boundary';
-import { AdminToolbar } from '@/components/admin-toolbar';
-import Head from 'next/head';
+import { Navbar } from '@/components/navbar';
+import { AdminWidget } from '@/components/admin-widget';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'SaintsGaming - Gaming Community',
-  description: 'Join the SaintsGaming community for gaming discussions, events, and more.',
-  icons: {
-    icon: '/favicon.ico',
-  },
+  title: 'Saints Gaming',
+  description: 'Saints Gaming Community',
 };
 
 export default function RootLayout({
@@ -27,29 +20,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
-      <Head>
-        <link rel="icon" href="/saintsgaming-icon.png" type="image/png" />
-      </Head>
-      <html lang="en" suppressHydrationWarning>
-        <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
           <AuthProvider>
-            <GlobalErrorBoundary>
-              <div className="min-h-screen flex flex-col">
-                <AdminToolbar />
-                <MainNav />
-                <main className="flex-1 container mx-auto px-4 py-8">
-                  {children}
-                </main>
-                <Footer />
-                <CookieConsent />
-                <AgeVerification />
-                <Toaster />
-              </div>
-            </GlobalErrorBoundary>
+            <div className="min-h-screen bg-background">
+              <Navbar />
+              <main className="container mx-auto py-6">{children}</main>
+              <AdminWidget />
+            </div>
+            <Toaster />
           </AuthProvider>
-        </body>
-      </html>
-    </>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }

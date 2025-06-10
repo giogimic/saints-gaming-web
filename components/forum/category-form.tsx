@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/components/ui/use-toast';
 
 interface CategoryFormProps {
   children: React.ReactNode;
@@ -33,26 +34,41 @@ export function CategoryForm({ children, category }: CategoryFormProps) {
     e.preventDefault();
 
     try {
-      const response = await fetch(
-        category ? `/api/categories/${category.id}` : '/api/categories',
-        {
-          method: category ? 'PATCH' : 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ name, description }),
-        }
-      );
+      const url = category 
+        ? `/api/admin/forum/categories/${category.id}`
+        : '/api/admin/forum/categories';
+      
+      const response = await fetch(url, {
+        method: category ? 'PATCH' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          description,
+          slug: name.toLowerCase().replace(/\s+/g, '-'),
+        }),
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to save category');
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save category');
       }
 
       setOpen(false);
       router.refresh();
+      
+      toast({
+        title: 'Success',
+        description: `Category ${category ? 'updated' : 'created'} successfully`,
+      });
     } catch (error) {
       console.error('Error saving category:', error);
-      // You might want to show an error message to the user here
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to save category',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -91,7 +107,9 @@ export function CategoryForm({ children, category }: CategoryFormProps) {
             >
               Cancel
             </Button>
-            <Button type="submit">Save</Button>
+            <Button type="submit">
+              {category ? 'Update' : 'Create'}
+            </Button>
           </div>
         </form>
       </DialogContent>

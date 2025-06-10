@@ -10,7 +10,7 @@ import { ThreadForm } from '@/components/forum/thread-form';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageSquare, Eye } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import { ThreadList } from '@/components/forum/thread-list';
 import { notFound } from 'next/navigation';
 

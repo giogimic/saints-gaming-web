@@ -1,9 +1,48 @@
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-config';
 import { getUsers, getUserById, getUserByEmail } from './db';
 import type { User } from './types';
 import { UserRole, ROLE_HIERARCHY } from './permissions';
 import type { Session } from "next-auth";
+import { authOptions } from '@/lib/auth-config';
+import prisma from '@/lib/prisma';
+import bcrypt from "bcryptjs"
+import CredentialsProvider from "next-auth/providers/credentials"
+import { User as PrismaUser } from "@prisma/client"
+import { PrismaAdapter } from "@auth/prisma-adapter"
+import { NextAuthOptions } from "next-auth"
+import GoogleProvider from "next-auth/providers/google"
+import { DefaultSession } from "next-auth"
+import "./auth-types"
+
+declare module "next-auth" {
+  interface User {
+    id: string
+    email: string | null
+    name: string | null
+    role: UserRole
+    image: string | null
+  }
+
+  interface Session {
+    user: {
+      id: string
+      email: string | null
+      name: string | null
+      role: UserRole
+      image: string | null
+    }
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string
+    email: string | null
+    name: string | null
+    role: UserRole
+    picture: string | null
+  }
+}
 
 export interface UserSession extends Omit<Session, 'user'> {
   user: {
@@ -51,4 +90,40 @@ export async function getUser(id: string): Promise<User | null> {
 
 export async function getUserByEmailAddress(email: string): Promise<User | null> {
   return getUserByEmail(email);
-} 
+}
+
+const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma) as any,
+  session: {
+    strategy: "jwt",
+  },
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+  ],
+  callbacks: {
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.sub!
+        session.user.role = token.role as UserRole
+      }
+      return session
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = user.role
+      }
+      return token
+    },
+  },
+  pages: {
+    signIn: "/auth/signin",
+  },
+}
+
+export { authOptions }
+
+// Helper function to get session with type safety
+export const getAuthSession = () => getServerSession(authOptions) 
