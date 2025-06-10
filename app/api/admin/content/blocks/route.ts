@@ -42,12 +42,30 @@ export async function GET(req: Request) {
             slug: true,
           },
         },
-        author: {
+        createdBy: {
           select: {
             id: true,
             name: true,
             image: true,
           },
+        },
+        ContentRevision: {
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            author: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1,
         },
       },
     })
