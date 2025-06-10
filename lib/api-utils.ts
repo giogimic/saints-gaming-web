@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authOptions } from '@/lib/auth-config';
 import { getServerSession } from 'next-auth';
-import type { UserSession } from "@/lib/auth";
 import { UserRole } from '@prisma/client';
 import prisma from './prisma';
 
@@ -108,7 +107,6 @@ export async function getRecentActivity() {
           select: {
             id: true,
             title: true,
-            slug: true,
             category: {
               select: {
                 id: true,

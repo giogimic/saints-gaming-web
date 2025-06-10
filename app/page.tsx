@@ -23,6 +23,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageId, setPageId] = useState<string | null>(null);
+  const [pageContent, setPageContent] = useState<any>(null);
 
   // All editable content
   const [editableContent, setEditableContent] = useState<Record<string, EditableContent>>({
@@ -58,40 +59,43 @@ export default function HomePage() {
   const canEdit = session?.user?.role && [UserRole.ADMIN, UserRole.MODERATOR].includes(session.user.role);
 
   useEffect(() => {
+    const fetchPageContent = async () => {
+      try {
+        const response = await fetch("/api/pages?slug=home");
+        if (!response.ok) {
+          throw new Error("Failed to fetch page content");
+        }
+        const data = await response.json();
+        setPageContent(data);
+        
+        // Store the page ID for updates
+        setPageId(data.id);
+        
+        // Parse the content if it's a string
+        const content = typeof data.content === 'string' ? JSON.parse(data.content) : data.content;
+        
+        // Update editableContent with fetched data
+        setEditableContent(prev => ({
+          ...prev,
+          ...Object.entries(content).reduce((acc, [key, value]) => ({
+            ...acc,
+            [key]: { id: key, content: value as string, type: 'text' }
+          }), {})
+        }));
+      } catch (error) {
+        console.error("Error fetching page content:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load page content",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchPageContent();
   }, []);
-
-  const fetchPageContent = async () => {
-    try {
-      const response = await fetch("/api/pages?slug=home");
-      if (!response.ok) throw new Error("Failed to fetch page content");
-      const data = await response.json();
-      
-      // Store the page ID for updates
-      setPageId(data.id);
-      
-      // Parse the content if it's a string
-      const content = typeof data.content === 'string' ? JSON.parse(data.content) : data.content;
-      
-      // Update editableContent with fetched data
-      setEditableContent(prev => ({
-        ...prev,
-        ...Object.entries(content).reduce((acc, [key, value]) => ({
-          ...acc,
-          [key]: { id: key, content: value as string, type: 'text' }
-        }), {})
-      }));
-    } catch (error) {
-      console.error("Error fetching page content:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load page content",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleContentEdit = (id: string, newContent: string) => {
     setEditableContent(prev => ({
@@ -154,19 +158,91 @@ export default function HomePage() {
   }
 
   const EditableText = ({ id, className = "" }: { id: string; className?: string }) => {
-    const content = editableContent[id];
-    if (!content) return null;
-    return isEditMode ? (
-      <span className="relative group inline-block w-full">
-        <Input
-          value={content.content}
-          onChange={(e) => handleContentEdit(id, e.target.value)}
-          className={`${className} pr-10`}
-        />
-        <Edit2 className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    const [isEditing, setIsEditing] = useState(false);
+    const [text, setText] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+    const { data: session } = useSession();
+    const isEditMode = useEditMode();
+    const canEdit = session?.user?.role && [UserRole.ADMIN, UserRole.MODERATOR].includes(session.user.role);
+
+    useEffect(() => {
+      if (editableContent[id]) {
+        setText(editableContent[id].content);
+      }
+    }, [editableContent, id]);
+
+    const handleSave = async () => {
+      if (!pageId) return;
+      
+      setIsSaving(true);
+      try {
+        const updatedContent = { ...editableContent, [id]: { ...editableContent[id], content: text } };
+        setEditableContent(updatedContent);
+
+        const response = await fetch("/api/pages", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: pageId,
+            content: Object.entries(updatedContent).reduce((acc, [key, value]) => ({
+              ...acc,
+              [key]: value.content
+            }), {}),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to save changes");
+        }
+
+        setIsEditing(false);
+      } catch (error) {
+        console.error("Error saving changes:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save changes",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    if (!canEdit || !isEditMode) {
+      return <span className={className}>{text}</span>;
+    }
+
+    if (isEditing) {
+      return (
+        <div className="relative inline-flex items-center gap-2">
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className={`${className} bg-background border rounded px-2 py-1`}
+            onBlur={() => !isSaving && setIsEditing(false)}
+            autoFocus
+          />
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-2 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <span
+        className={`${className} cursor-pointer hover:bg-accent/10 rounded px-1`}
+        onClick={() => setIsEditing(true)}
+      >
+        {text}
       </span>
-    ) : (
-      <span className={className}>{content.content}</span>
     );
   };
 

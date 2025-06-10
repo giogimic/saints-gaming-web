@@ -1,19 +1,62 @@
-import { PrismaClient, UserRole } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
 async function main() {
-  // Create default admin user if it doesn't exist
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@example.com' },
+  // Create categories
+  const categories = [
+    {
+      name: 'General Discussion',
+      description: 'General discussion about gaming and community topics',
+      slug: 'general',
+      order: 1,
+      isDefault: true,
+    },
+    {
+      name: 'ARK: Survival Ascended',
+      description: 'Discussion about ARK: Survival Ascended',
+      slug: 'ark',
+      order: 2,
+    },
+    {
+      name: 'Minecraft',
+      description: 'Discussion about Minecraft',
+      slug: 'minecraft',
+      order: 3,
+    },
+    {
+      name: 'Server Support',
+      description: 'Get help with server issues',
+      slug: 'support',
+      order: 4,
+    },
+    {
+      name: 'Community Events',
+      description: 'Information about community events and tournaments',
+      slug: 'events',
+      order: 5,
+    },
+  ];
+
+  for (const category of categories) {
+    await prisma.category.upsert({
+      where: { slug: category.slug },
+      update: category,
+      create: category,
+    });
+  }
+
+  // Create a default user (admin) if not exists
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@saintsgaming.com' },
     update: {},
     create: {
-      email: 'admin@example.com',
-      name: 'Admin User',
-      role: UserRole.admin,
-      password: 'admin123', // This should be hashed in production
+      name: 'Admin',
+      email: 'admin@saintsgaming.com',
+      role: 'admin',
+      password: 'admin', // In production, use hashed passwords!
     },
-  })
+  });
 
   // Create default pages
   const defaultPages = [
@@ -23,41 +66,8 @@ async function main() {
       description: 'Welcome to Saints Gaming',
       isPublished: true,
       template: 'home',
-    },
-    {
-      title: 'Servers',
-      slug: 'servers',
-      description: 'Our gaming servers and communities',
-      isPublished: true,
-      template: 'servers',
-    },
-    {
-      title: 'Modpacks',
-      slug: 'modpacks',
-      description: 'Our custom modpacks for various games',
-      isPublished: true,
-      template: 'modpacks',
-    },
-    {
-      title: 'Community',
-      slug: 'community',
-      description: 'Join our gaming community',
-      isPublished: true,
-      template: 'community',
-    },
-    {
-      title: 'Games',
-      slug: 'games',
-      description: 'Games we play and support',
-      isPublished: true,
-      template: 'games',
-    },
-    {
-      title: 'Forum',
-      slug: 'forum',
-      description: 'Community discussions and support',
-      isPublished: true,
-      template: 'forum',
+      createdById: admin.id,
+      content: 'Welcome to the home page!'
     },
     {
       title: 'About',
@@ -65,77 +75,116 @@ async function main() {
       description: 'About Saints Gaming',
       isPublished: true,
       template: 'about',
+      createdById: admin.id,
+      content: 'About us content goes here.'
     },
     {
-      title: 'Terms of Service',
-      slug: 'terms',
-      description: 'Terms of Service and Community Guidelines',
+      title: 'Contact',
+      slug: 'contact',
+      description: 'Contact Saints Gaming',
       isPublished: true,
-      template: 'legal',
+      template: 'contact',
+      createdById: admin.id,
+      content: 'Contact information goes here.'
     },
     {
-      title: 'Privacy Policy',
-      slug: 'privacy',
-      description: 'Privacy Policy and Data Protection',
+      title: 'Servers',
+      slug: 'servers',
+      description: 'Our Game Servers',
       isPublished: true,
-      template: 'legal',
+      template: 'servers',
+      createdById: admin.id,
+      content: 'Server information and details.'
     },
-  ]
+  ];
 
   for (const page of defaultPages) {
     await prisma.page.upsert({
       where: { slug: page.slug },
       update: page,
-      create: {
-        ...page,
-        createdById: adminUser.id,
-      },
-    })
+      create: page,
+    });
   }
 
-  // Create default site settings
-  await prisma.siteSettings.upsert({
-    where: { id: '1' },
-    update: {},
-    create: {
-      id: '1',
-      settings: {
-        siteName: 'Saints Gaming',
-        siteDescription: 'A gaming community for everyone',
-        logo: '/logo.png',
-        theme: {
-          primary: '#4F46E5',
-          secondary: '#10B981',
-          accent: '#F59E0B',
-        },
-        social: {
-          discord: 'https://discord.gg/saintsgaming',
-          twitter: 'https://twitter.com/saintsgaming',
-          youtube: 'https://youtube.com/saintsgaming',
-        },
-        servers: {
-          minecraft: 'play.saintsgaming.com',
-          teamspeak: 'ts.saintsgaming.com',
-        },
-        features: {
-          forum: true,
-          events: true,
-          servers: true,
-          news: true,
-        },
-        maintenance: false,
-      },
+  // Create initial servers
+  const servers = [
+    {
+      id: 'ark-ascended',
+      name: 'ARK: Survival Ascended',
+      description: 'Join our ARK: Survival Ascended server for an epic survival experience!',
+      image: '/saintsgaming-logo.png',
+      status: 'online',
+      players: 24,
+      maxPlayers: 50,
+      version: 'v1.0',
+      ip: 'ark.saintsgaming.com',
+      type: 'ark',
+      features: JSON.stringify([
+        '2x XP and Harvesting',
+        'Custom Dino Spawns',
+        'Active Admin Team',
+        'Regular Events',
+        'Discord Integration',
+      ]),
+      rules: JSON.stringify([
+        'No cheating or exploiting',
+        'Be respectful to other players',
+        'No griefing or harassment',
+        'Follow server guidelines',
+      ]),
+      modpack: undefined,
+      order: 1,
     },
-  })
+    {
+      id: 'minecraft',
+      name: 'Minecraft',
+      description: 'Explore our Minecraft server with custom modpacks and unique features!',
+      image: '/saintsgaming-icon.png',
+      status: 'online',
+      players: 15,
+      maxPlayers: 30,
+      version: '1.20.1',
+      ip: 'mc.saintsgaming.com',
+      type: 'minecraft',
+      features: JSON.stringify([
+        'Custom Modpack',
+        'Economy System',
+        'Land Protection',
+        'Player Shops',
+        'Regular Events',
+      ]),
+      rules: JSON.stringify([
+        'No griefing or stealing',
+        'Be respectful to others',
+        'No cheating or exploiting',
+        'Follow server guidelines',
+      ]),
+      modpack: {
+        name: 'Saints Gaming Modpack',
+        version: '1.0.0',
+        downloadUrl: '/modpacks/saints-gaming.zip',
+      },
+      order: 2,
+    },
+  ];
 
-  console.log('Database seeded successfully')
+  for (const server of servers) {
+    const { id, ...updateData } = server;
+    await prisma.server.upsert({
+      where: { id: server.id },
+      update: updateData,
+      create: server,
+    });
+  }
+
+  console.log('Seed completed successfully');
 }
 
 main()
   .catch((e) => {
-    console.error(e)
-    process.exit(1)
+    console.error(e);
+    process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect()
-  }) 
+    await prisma.$disconnect();
+  }); 

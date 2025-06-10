@@ -9,19 +9,18 @@ import { toast } from 'sonner';
 
 interface NewThreadFormProps {
   categoryId: string;
+  onSuccess?: () => void;
 }
 
-export function NewThreadForm({ categoryId }: NewThreadFormProps) {
+export function NewThreadForm({ categoryId, onSuccess }: NewThreadFormProps) {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    setIsLoading(true);
 
     try {
       const response = await fetch('/api/forum/threads', {
@@ -30,72 +29,58 @@ export function NewThreadForm({ categoryId }: NewThreadFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
+          title,
+          content,
           categoryId,
         }),
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create thread');
+        throw new Error('Failed to create thread');
       }
 
       const thread = await response.json();
       toast.success('Thread created successfully');
-      router.push(`/forum/${thread.category.slug}/${thread.slug}`);
+      router.push(`/forum/thread/${thread.id}`);
+      onSuccess?.();
     } catch (error) {
+      toast.error('Failed to create thread');
       console.error('Error creating thread:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create thread');
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-2">
-        <label htmlFor="title" className="text-sm font-medium">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label htmlFor="title" className="block text-sm font-medium mb-1">
           Title
         </label>
         <Input
           id="title"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           placeholder="Enter thread title"
           required
-          minLength={1}
-          maxLength={200}
         />
       </div>
-
-      <div className="space-y-2">
-        <label htmlFor="content" className="text-sm font-medium">
+      <div>
+        <label htmlFor="content" className="block text-sm font-medium mb-1">
           Content
         </label>
         <Textarea
           id="content"
-          value={formData.content}
-          onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
           placeholder="Enter thread content"
           required
-          minLength={1}
-          className="min-h-[200px]"
+          rows={5}
         />
       </div>
-
-      <div className="flex justify-end gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-          disabled={isSubmitting}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating...' : 'Create Thread'}
-        </Button>
-      </div>
+      <Button type="submit" disabled={isLoading}>
+        {isLoading ? 'Creating...' : 'Create Thread'}
+      </Button>
     </form>
   );
 } 

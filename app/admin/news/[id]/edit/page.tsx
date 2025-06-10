@@ -1,3 +1,5 @@
+"use client"
+
 import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth-config"
@@ -25,8 +27,6 @@ export default async function EditNewsPage({
 
   return <EditNewsForm article={article} />
 }
-
-'use client'
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

@@ -1,29 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { siteSettings } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const key = searchParams.get("key");
-
-    if (key) {
-      const setting = await db.query.siteSettings.findFirst({
-        where: eq(siteSettings.key, key),
-      });
-
-      if (!setting) {
-        return new NextResponse("Setting not found", { status: 404 });
-      }
-
-      return NextResponse.json(setting);
-    }
-
-    const allSettings = await db.query.siteSettings.findMany();
-    return NextResponse.json(allSettings);
+    const settings = await prisma.siteSettings.findFirst();
+    return NextResponse.json(settings || {});
   } catch (error) {
     console.error("[SETTINGS_GET]", error);
     return new NextResponse("Internal error", { status: 500 });
@@ -33,7 +16,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || !["admin", "moderator"].includes(session.user.role)) {
+    if (!session?.user || session.user.role !== "admin") {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -44,12 +27,18 @@ export async function POST(request: Request) {
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
-    const setting = await db.insert(siteSettings).values({
-      key,
-      value,
-    }).returning();
+    const settings = await prisma.siteSettings.upsert({
+      where: { id: "1" },
+      update: {
+        [key]: value,
+      },
+      create: {
+        id: "1",
+        [key]: value,
+      },
+    });
 
-    return NextResponse.json(setting[0]);
+    return NextResponse.json(settings);
   } catch (error) {
     console.error("[SETTINGS_POST]", error);
     return new NextResponse("Internal error", { status: 500 });
@@ -59,7 +48,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || !["admin", "moderator"].includes(session.user.role)) {
+    if (!session?.user || session.user.role !== "admin") {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -70,15 +59,18 @@ export async function PATCH(request: Request) {
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
-    const setting = await db.update(siteSettings)
-      .set({
-        value,
-        updatedAt: new Date(),
-      })
-      .where(eq(siteSettings.key, key))
-      .returning();
+    const settings = await prisma.siteSettings.upsert({
+      where: { id: "1" },
+      update: {
+        [key]: value,
+      },
+      create: {
+        id: "1",
+        [key]: value,
+      },
+    });
 
-    return NextResponse.json(setting[0]);
+    return NextResponse.json(settings);
   } catch (error) {
     console.error("[SETTINGS_PATCH]", error);
     return new NextResponse("Internal error", { status: 500 });
@@ -99,7 +91,11 @@ export async function DELETE(request: Request) {
       return new NextResponse("Missing setting key", { status: 400 });
     }
 
-    await db.delete(siteSettings).where(eq(siteSettings.key, key));
+    await prisma.userSettings.delete({
+      where: {
+        key: key,
+      },
+    });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

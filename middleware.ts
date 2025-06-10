@@ -1,8 +1,9 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 export default withAuth(
-  function middleware(req) {
+  function middleware(req: NextRequest) {
     const token = req.nextauth.token;
     const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
     const isApiRoute = req.nextUrl.pathname.startsWith("/api");
@@ -34,6 +35,8 @@ export default withAuth(
 export const config = {
   matcher: [
     "/admin/:path*",
-    "/api/:path*",
+    "/api/admin/:path*",
+    "/api/news/:path*",
+    "/api/settings/:path*",
   ],
 }; 

@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from 'react';
 import { MessageSquare, Clock, User, ThumbsUp, Flag, Pin, Lock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';

@@ -2,6 +2,8 @@ import { prisma } from './db';
 import type { User } from './types';
 import { hash } from 'bcryptjs';
 import { UserRole } from './permissions';
+import fs from 'fs/promises';
+import path from 'path';
 
 export async function saveUser(user: Partial<User>): Promise<User> {
   try {
@@ -94,4 +96,95 @@ export async function saveUser(user: Partial<User>): Promise<User> {
     console.error('Error saving user:', error);
     throw error;
   }
-} 
+}
+
+export async function getPage(slug: string) {
+  try {
+    const filePath = path.join(process.cwd(), 'data', 'pages', `${slug}.json`);
+    const content = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Error reading page:', error);
+    return null;
+  }
+}
+
+export async function updateUserVerification(userId: string, verified: boolean) {
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: verified ? new Date() : null }
+    });
+    return user;
+  } catch (error) {
+    console.error('Error updating user verification:', error);
+    throw error;
+  }
+}
+
+export async function readJsonFile(filePath: string) {
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Error reading JSON file:', error);
+    return null;
+  }
+}
+
+export async function writeJsonFile(filePath: string, data: any) {
+  try {
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Error writing JSON file:', error);
+    return false;
+  }
+}
+
+export async function getPostById(id: string) {
+  try {
+    const post = await prisma.post.findUnique({
+      where: { id },
+      include: {
+        author: true,
+        comments: true,
+        votes: true
+      }
+    });
+    return post;
+  } catch (error) {
+    console.error('Error getting post:', error);
+    return null;
+  }
+}
+
+export async function updatePost(id: string, data: any) {
+  try {
+    const post = await prisma.post.update({
+      where: { id },
+      data,
+      include: {
+        author: true,
+        comments: true,
+        votes: true
+      }
+    });
+    return post;
+  } catch (error) {
+    console.error('Error updating post:', error);
+    throw error;
+  }
+}
+
+export async function deletePost(id: string) {
+  try {
+    await prisma.post.delete({
+      where: { id }
+    });
+    return true;
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    return false;
+  }
+}

@@ -1,11 +1,11 @@
 import { NextAuthOptions, User, Session } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
-import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import prisma from "./prisma";
 import { UserRole } from "./permissions";
 import { JWT } from "next-auth/jwt";
+import SteamProvider from "./auth/steam-provider";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any, // Type assertion needed due to version mismatch
@@ -55,10 +55,7 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
+    SteamProvider(),
   ],
   callbacks: {
     async jwt({ token, user }: { token: JWT; user: User | null }): Promise<JWT> {

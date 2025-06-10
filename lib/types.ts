@@ -46,12 +46,15 @@ export interface User {
   email: string;
   role: UserRole;
   steamId?: string;
+  discordId?: string;
+  twitchId?: string;
   password?: string;
   emailVerified?: Date;
   createdAt: Date;
   updatedAt: Date;
   lastLogin?: Date;
   bio?: string;
+  avatar?: string;
   settings?: UserSettings;
   gamingProfile?: UserGamingProfile;
   socialLinks?: SocialLink[];

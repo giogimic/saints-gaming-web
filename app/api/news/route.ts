@@ -5,66 +5,81 @@ import { prisma } from "@/lib/prisma"
 import { authOptions as authConfig } from "@/lib/auth-config"
 import { db } from "@/lib/db"
 import { newsPosts } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
 import { UserRole } from "@/lib/permissions"
 import slugify from "slugify"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const posts = await db.query.newsPosts.findMany({
-      with: {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get("id")
+
+    if (id) {
+      const news = await prisma.news.findUnique({
+        where: { id },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+        },
+      })
+
+      if (!news) {
+        return new NextResponse("News not found", { status: 404 })
+      }
+
+      return NextResponse.json(news)
+    }
+
+    const news = await prisma.news.findMany({
+      include: {
         author: {
-          columns: {
+          select: {
             id: true,
             name: true,
             image: true,
           },
         },
       },
-      orderBy: (posts, { desc }) => [desc(posts.createdAt)],
+      orderBy: {
+        createdAt: "desc",
+      },
     })
 
-    return NextResponse.json(posts)
+    return NextResponse.json(news)
   } catch (error) {
-    console.error("Error fetching news posts:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch news posts" },
-      { status: 500 }
-    )
+    console.error("[NEWS_GET]", error)
+    return new NextResponse("Internal error", { status: 500 })
   }
 }
 
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user || ![UserRole.ADMIN, UserRole.MODERATOR].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+    if (!session?.user || !["admin", "moderator"].includes(session.user.role)) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const { title, content, published } = await request.json()
+    const body = await request.json()
+    const { title, content, published } = body
 
     if (!title || !content) {
-      return NextResponse.json(
-        { error: "Title and content are required" },
-        { status: 400 }
-      )
+      return new NextResponse("Missing required fields", { status: 400 })
     }
 
-    const [post] = await db.insert(newsPosts).values({
-      title,
-      content,
-      authorId: session.user.id,
-      published: published ?? true,
-    }).returning()
-
-    const createdPost = await db.query.newsPosts.findFirst({
-      where: eq(newsPosts.id, post.id),
-      with: {
+    const news = await prisma.news.create({
+      data: {
+        title,
+        content,
+        published: published ?? false,
+        authorId: session.user.id,
+      },
+      include: {
         author: {
-          columns: {
+          select: {
             id: true,
             name: true,
             image: true,
@@ -73,49 +88,38 @@ export async function POST(request: Request) {
       },
     })
 
-    return NextResponse.json(createdPost)
+    return NextResponse.json(news)
   } catch (error) {
-    console.error("Error creating news post:", error)
-    return NextResponse.json(
-      { error: "Failed to create news post" },
-      { status: 500 }
-    )
+    console.error("[NEWS_POST]", error)
+    return new NextResponse("Internal error", { status: 500 })
   }
 }
 
 export async function PATCH(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user || ![UserRole.ADMIN, UserRole.MODERATOR].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+    if (!session?.user || !["admin", "moderator"].includes(session.user.role)) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const { id, title, content } = await request.json()
+    const body = await request.json()
+    const { id, title, content, published } = body
 
     if (!id || !title || !content) {
-      return NextResponse.json(
-        { error: "ID, title, and content are required" },
-        { status: 400 }
-      )
+      return new NextResponse("Missing required fields", { status: 400 })
     }
 
-    const [post] = await db.update(newsPosts)
-      .set({
+    const news = await prisma.news.update({
+      where: { id },
+      data: {
         title,
         content,
+        published: published ?? false,
         updatedAt: new Date(),
-      })
-      .where(eq(newsPosts.id, id))
-      .returning()
-
-    const updatedPost = await db.query.newsPosts.findFirst({
-      where: eq(newsPosts.id, post.id),
-      with: {
+      },
+      include: {
         author: {
-          columns: {
+          select: {
             id: true,
             name: true,
             image: true,
@@ -124,44 +128,32 @@ export async function PATCH(request: Request) {
       },
     })
 
-    return NextResponse.json(updatedPost)
+    return NextResponse.json(news)
   } catch (error) {
-    console.error("Error updating news post:", error)
-    return NextResponse.json(
-      { error: "Failed to update news post" },
-      { status: 500 }
-    )
+    console.error("[NEWS_PATCH]", error)
+    return new NextResponse("Internal error", { status: 500 })
   }
 }
 
 export async function DELETE(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user || ![UserRole.ADMIN, UserRole.MODERATOR].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+    if (!session?.user || !["admin", "moderator"].includes(session.user.role)) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
 
     if (!id) {
-      return NextResponse.json(
-        { error: "ID is required" },
-        { status: 400 }
-      )
+      return new NextResponse("Missing news ID", { status: 400 })
     }
 
-    await db.delete(newsPosts).where(eq(newsPosts.id, id))
+    await prisma.news.delete({ where: { id } })
 
-    return NextResponse.json({ success: true })
+    return new NextResponse(null, { status: 204 })
   } catch (error) {
-    console.error("Error deleting news post:", error)
-    return NextResponse.json(
-      { error: "Failed to delete news post" },
-      { status: 500 }
-    )
+    console.error("[NEWS_DELETE]", error)
+    return new NextResponse("Internal error", { status: 500 })
   }
 } 

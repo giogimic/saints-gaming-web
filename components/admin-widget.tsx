@@ -32,9 +32,13 @@ export function useEditMode() {
   const [editMode, setEditMode] = useState(globalEditMode)
 
   useEffect(() => {
-    const listener = (mode: boolean) => setEditMode(mode)
+    const listener = (mode: boolean) => {
+      setEditMode(mode)
+    }
     editModeListeners.add(listener)
-    return () => editModeListeners.delete(listener)
+    return () => {
+      editModeListeners.delete(listener)
+    }
   }, [])
 
   return editMode
@@ -45,9 +49,19 @@ export function AdminWidget() {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(globalEditMode)
 
-  if (!session?.user || session.user.role !== UserRole.ADMIN) {
+  useEffect(() => {
+    const listener = (mode: boolean) => {
+      setIsEditMode(mode)
+    }
+    editModeListeners.add(listener)
+    return () => {
+      editModeListeners.delete(listener)
+    }
+  }, [])
+
+  if (!session?.user || ![UserRole.ADMIN, UserRole.MODERATOR].includes(session.user.role)) {
     return null
   }
 
@@ -146,14 +160,23 @@ export function AdminWidget() {
             )}
           </div>
         ) : (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-12 w-12 rounded-full"
-            onClick={() => setIsOpen(true)}
-          >
-            <Settings className="h-6 w-6" />
-          </Button>
+          <div className="p-2">
+            <div className="flex items-center justify-between mb-2">
+              <Switch
+                checked={isEditMode}
+                onCheckedChange={handleEditModeChange}
+                id="edit-mode-mini"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={() => setIsOpen(true)}
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         )}
       </Card>
     </div>

@@ -11,7 +11,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 enum UserRole {
@@ -30,6 +30,9 @@ model User {
   role             UserRole           @default(member)
   bio              String?
   steamId          String?            @unique
+  discordId        String?
+  twitchId         String?
+  avatar           String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   lastLogin        DateTime?
@@ -40,8 +43,8 @@ model User {
   posts            Post[]
   comments         Comment[]
   news             News[]
-  settings         UserSettings?      @relation("UserSettingsRelation")
-  gamingProfile    UserGamingProfile? @relation("UserGamingProfileRelation")
+  settings         UserSettings?
+  gamingProfile    UserGamingProfile?
   pages            Page[]
   contentBlocks    ContentBlock[]
   contentRevisions ContentRevision[]
@@ -60,8 +63,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -94,7 +96,7 @@ model UserSettings {
   showOnlineStatus   Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
-  user               User     @relation("UserSettingsRelation", fields: [userId], references: [id])
+  user               User     @relation(fields: [userId], references: [id])
 }
 
 model UserGamingProfile {
@@ -105,7 +107,7 @@ model UserGamingProfile {
   gamingPreferences String   @default("[]")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-  user              User     @relation("UserGamingProfileRelation", fields: [userId], references: [id])
+  user              User     @relation(fields: [userId], references: [id])
 }
 
 model SocialLink {
@@ -158,18 +160,19 @@ model Page {
   slug            String            @unique
   title           String
   description     String?
+  content         String
   isPublished     Boolean           @default(false)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   createdBy       User              @relation(fields: [createdById], references: [id])
   createdById     String
   blocks          ContentBlock[]
-  metadata        Json? // SEO and other metadata
-  template        String? // Optional template override
+  metadata        Json?
+  template        String?
   parent          Page?             @relation("PageHierarchy", fields: [parentId], references: [id])
   parentId        String?
   children        Page[]            @relation("PageHierarchy")
-  ContentRevision ContentRevision[]
+  contentRevisions ContentRevision[]
 
   @@index([slug])
   @@index([createdById])
@@ -177,9 +180,9 @@ model Page {
 
 model ContentBlock {
   id              String            @id @default(cuid())
-  type            String // e.g., "text", "image", "video", "carousel", "grid", etc.
+  type            String
   title           String?
-  content         Json // Flexible content storage
+  content         Json
   order           Int               @default(0)
   isPublished     Boolean           @default(false)
   createdAt       DateTime          @default(now())
@@ -188,9 +191,9 @@ model ContentBlock {
   createdById     String
   page            Page              @relation(fields: [pageId], references: [id])
   pageId          String
-  settings        Json? // Additional settings for the block
-  metadata        Json? // SEO and other metadata
-  ContentRevision ContentRevision[]
+  settings        Json?
+  metadata        Json?
+  contentRevisions ContentRevision[]
 
   @@index([pageId])
   @@index([type])
@@ -198,51 +201,42 @@ model ContentBlock {
 
 model ContentRevision {
   id        String        @id @default(cuid())
-  content   String
-  type      String // 'page' or 'block'
-  entityId  String // ID of the page or block
+  content   Json
   createdAt DateTime      @default(now())
-  authorId  String
-  author    User          @relation(fields: [authorId], references: [id])
-  page      Page?         @relation(fields: [entityId], references: [id])
-  block     ContentBlock? @relation(fields: [entityId], references: [id])
-
-  @@index([authorId])
-  @@index([entityId])
+  updatedAt DateTime      @updatedAt
+  createdBy User          @relation(fields: [createdById], references: [id])
+  createdById String
+  block      ContentBlock? @relation(fields: [blockId], references: [id])
+  blockId    String?
+  page       Page?        @relation(fields: [pageId], references: [id])
+  pageId     String?
 }
 
 model Thread {
-  id         String   @id @default(cuid())
-  title      String
-  slug       String   @unique
-  content    String
-  isPinned   Boolean  @default(false)
-  isLocked   Boolean  @default(false)
-  viewCount  Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  authorId   String
-  categoryId String
-  author     User     @relation(fields: [authorId], references: [id])
-  category   Category @relation(fields: [categoryId], references: [id])
-  posts      Post[]
-
-  @@unique([categoryId, slug])
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  authorId    String
+  categoryId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isPinned    Boolean  @default(false)
+  isLocked    Boolean  @default(false)
+  viewCount   Int      @default(0)
+  author      User     @relation(fields: [authorId], references: [id])
+  category    Category @relation(fields: [categoryId], references: [id])
+  posts       Post[]
 }
 
 model News {
   id        String   @id @default(cuid())
   title     String
   content   String
-  excerpt   String?
-  imageUrl  String?
-  published Boolean  @default(false)
-  author    User     @relation(fields: [authorId], references: [id])
   authorId  String
+  published Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([authorId])
+  author    User     @relation(fields: [authorId], references: [id])
 }
 
 model SiteSettings {
@@ -250,4 +244,23 @@ model SiteSettings {
   settings  Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Server {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  image       String
+  status      String   @default("offline")
+  players     Int      @default(0)
+  maxPlayers  Int      @default(0)
+  version     String
+  ip          String
+  type        String
+  features    String   @default("[]")
+  rules       String   @default("[]")
+  modpack     Json?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

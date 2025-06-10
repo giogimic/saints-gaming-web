@@ -35,4 +35,4 @@ export async function fetchSteamProfile(steamId: string) {
   }
 
   return data.response.players[0];
-} 
+}

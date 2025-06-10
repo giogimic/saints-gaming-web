@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { useEditMode } from "@/components/admin-widget";
+import { EditableText } from "@/app/components/editable-text";
 
 interface ServerInfo {
   id: string;
@@ -29,66 +32,52 @@ interface ServerInfo {
 
 export default function ServersPage() {
   const [activeTab, setActiveTab] = useState("ark");
+  const [servers, setServers] = useState<ServerInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { data: session } = useSession();
+  const isEditMode = useEditMode();
+  const canEdit = session?.user?.role === "admin";
 
-  const servers: ServerInfo[] = [
-    {
-      id: "ark-ascended",
-      name: "ARK: Survival Ascended",
-      description: "Join our ARK: Survival Ascended server for an epic survival experience!",
-      image: "/ark-ascended.jpg",
-      status: "online",
-      players: 24,
-      maxPlayers: 50,
-      version: "v1.0",
-      ip: "ark.saintsgaming.com",
-      type: "ark",
-      features: [
-        "2x XP and Harvesting",
-        "Custom Dino Spawns",
-        "Active Admin Team",
-        "Regular Events",
-        "Discord Integration",
-      ],
-      rules: [
-        "No cheating or exploiting",
-        "Be respectful to other players",
-        "No griefing or harassment",
-        "Follow server guidelines",
-      ],
-    },
-    {
-      id: "minecraft",
-      name: "Minecraft",
-      description: "Explore our Minecraft server with custom modpacks and unique features!",
-      image: "/minecraft.jpg",
-      status: "online",
-      players: 15,
-      maxPlayers: 30,
-      version: "1.20.1",
-      ip: "mc.saintsgaming.com",
-      type: "minecraft",
-      features: [
-        "Custom Modpack",
-        "Economy System",
-        "Land Protection",
-        "Player Shops",
-        "Regular Events",
-      ],
-      rules: [
-        "No griefing or stealing",
-        "Be respectful to others",
-        "No cheating or exploiting",
-        "Follow server guidelines",
-      ],
-      modpack: {
-        name: "Saints Gaming Modpack",
-        version: "1.0.0",
-        downloadUrl: "/modpacks/saints-gaming.zip",
-      },
-    },
-  ];
+  useEffect(() => {
+    const fetchServers = async () => {
+      try {
+        const response = await fetch('/api/servers');
+        if (!response.ok) throw new Error('Failed to fetch servers');
+        const data = await response.json();
+        setServers(data);
+      } catch (error) {
+        console.error('Error fetching servers:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServers();
+  }, []);
+
+  const handleSave = async (serverId: string, field: string, value: any) => {
+    try {
+      const response = await fetch(`/api/servers/${serverId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update server');
+      
+      setServers(prev => prev.map(server => 
+        server.id === serverId ? { ...server, [field]: value } : server
+      ));
+    } catch (error) {
+      console.error('Error updating server:', error);
+    }
+  };
 
   const filteredServers = servers.filter((server) => server.type === activeTab);
+
+  if (loading) {
+    return <div className="container mx-auto py-8">Loading servers...</div>;
+  }
 
   return (
     <div className="container mx-auto py-8">
@@ -109,8 +98,26 @@ export default function ServersPage() {
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle>{server.name}</CardTitle>
-                        <CardDescription>{server.description}</CardDescription>
+                        <CardTitle>
+                          {canEdit && isEditMode ? (
+                            <EditableText
+                              value={server.name}
+                              onSave={async (value) => await handleSave(server.id, 'name', value)}
+                            />
+                          ) : (
+                            server.name
+                          )}
+                        </CardTitle>
+                        <CardDescription>
+                          {canEdit && isEditMode ? (
+                            <EditableText
+                              value={server.description}
+                              onSave={async (value) => await handleSave(server.id, 'description', value)}
+                            />
+                          ) : (
+                            server.description
+                          )}
+                        </CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
                         <div
@@ -132,7 +139,7 @@ export default function ServersPage() {
                     <div className="space-y-6">
                       <div className="relative h-64 rounded-lg overflow-hidden">
                         <Image
-                          src={server.image}
+                          src={server.type === 'ark' ? '/saintsgaming-logo.png' : '/saintsgaming-icon.png'}
                           alt={server.name}
                           fill
                           className="object-cover"
@@ -147,11 +154,29 @@ export default function ServersPage() {
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Version</p>
-                          <p className="text-lg font-medium">{server.version}</p>
+                          <p className="text-lg font-medium">
+                            {canEdit && isEditMode ? (
+                              <EditableText
+                                value={server.version}
+                                onSave={async (value) => await handleSave(server.id, 'version', value)}
+                              />
+                            ) : (
+                              server.version
+                            )}
+                          </p>
                         </div>
                         <div className="col-span-2">
                           <p className="text-sm text-muted-foreground">Server IP</p>
-                          <p className="text-lg font-medium">{server.ip}</p>
+                          <p className="text-lg font-medium">
+                            {canEdit && isEditMode ? (
+                              <EditableText
+                                value={server.ip}
+                                onSave={async (value) => await handleSave(server.id, 'ip', value)}
+                              />
+                            ) : (
+                              server.ip
+                            )}
+                          </p>
                         </div>
                       </div>
                       <Button className="w-full" asChild>
@@ -170,7 +195,18 @@ export default function ServersPage() {
                     <ul className="list-disc list-inside space-y-2">
                       {server.features.map((feature, index) => (
                         <li key={index} className="text-muted-foreground">
-                          {feature}
+                          {canEdit && isEditMode ? (
+                            <EditableText
+                              value={feature}
+                              onSave={async (value) => {
+                                const newFeatures = [...server.features];
+                                newFeatures[index] = value;
+                                await handleSave(server.id, 'features', newFeatures);
+                              }}
+                            />
+                          ) : (
+                            feature
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -186,56 +222,118 @@ export default function ServersPage() {
                     <ul className="list-disc list-inside space-y-2">
                       {server.rules.map((rule, index) => (
                         <li key={index} className="text-muted-foreground">
-                          {rule}
+                          {canEdit && isEditMode ? (
+                            <EditableText
+                              value={rule}
+                              onSave={async (value) => {
+                                const newRules = [...server.rules];
+                                newRules[index] = value;
+                                await handleSave(server.id, 'rules', newRules);
+                              }}
+                            />
+                          ) : (
+                            rule
+                          )}
                         </li>
                       ))}
                     </ul>
                   </CardContent>
                 </Card>
-              </div>
 
-              {/* Sidebar */}
-              <div className="space-y-6">
-                {/* Modpack Info (Minecraft only) */}
-                {server.type === "minecraft" && server.modpack && (
+                {/* Modpack */}
+                {server.modpack && (
                   <Card>
                     <CardHeader>
-                      <CardTitle>Modpack Information</CardTitle>
+                      <CardTitle>Modpack</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
                         <div>
                           <p className="text-sm text-muted-foreground">Name</p>
-                          <p className="font-medium">{server.modpack.name}</p>
+                          <p className="text-lg font-medium">
+                            {canEdit && isEditMode ? (
+                              <EditableText
+                                value={server.modpack.name}
+                                onSave={async (value) =>
+                                  await handleSave(server.id, 'modpack', {
+                                    ...server.modpack,
+                                    name: value,
+                                  })
+                                }
+                              />
+                            ) : (
+                              server.modpack.name
+                            )}
+                          </p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Version</p>
-                          <p className="font-medium">{server.modpack.version}</p>
+                          <p className="text-lg font-medium">
+                            {canEdit && isEditMode ? (
+                              <EditableText
+                                value={server.modpack.version}
+                                onSave={async (value) =>
+                                  await handleSave(server.id, 'modpack', {
+                                    ...server.modpack,
+                                    version: value,
+                                  })
+                                }
+                              />
+                            ) : (
+                              server.modpack.version
+                            )}
+                          </p>
                         </div>
-                        <Button className="w-full" asChild>
-                          <Link href={server.modpack.downloadUrl}>Download Modpack</Link>
-                        </Button>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Download URL</p>
+                          <p className="text-lg font-medium">
+                            {canEdit && isEditMode ? (
+                              <EditableText
+                                value={server.modpack.downloadUrl}
+                                onSave={async (value) =>
+                                  await handleSave(server.id, 'modpack', {
+                                    ...server.modpack,
+                                    downloadUrl: value,
+                                  })
+                                }
+                              />
+                            ) : (
+                              server.modpack.downloadUrl
+                            )}
+                          </p>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
                 )}
+              </div>
 
-                {/* Quick Links */}
+              {/* Server Status */}
+              <div className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Quick Links</CardTitle>
+                    <CardTitle>Server Status</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      <Button variant="outline" className="w-full" asChild>
-                        <Link href="/forum">Server Forum</Link>
-                      </Button>
-                      <Button variant="outline" className="w-full" asChild>
-                        <Link href="/community">Discord Community</Link>
-                      </Button>
-                      <Button variant="outline" className="w-full" asChild>
-                        <Link href="/support">Get Support</Link>
-                      </Button>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Status</p>
+                        <p className="text-lg font-medium">
+                          {server.status.charAt(0).toUpperCase() + server.status.slice(1)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Players Online</p>
+                        <p className="text-lg font-medium">
+                          {server.players}/{server.maxPlayers}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Server Type</p>
+                        <p className="text-lg font-medium">
+                          {server.type.charAt(0).toUpperCase() + server.type.slice(1)}
+                        </p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

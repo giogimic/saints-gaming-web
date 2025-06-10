@@ -1,116 +1,67 @@
-import { Suspense } from 'react';
-import { ThreadDetail } from '@/app/components/forum/thread-detail';
-import { notFound } from 'next/navigation';
+import { notFound } from 'next/navigation'
+import { prisma } from '@/lib/prisma'
+import { PostList } from '@/components/forum/post-list'
+import { NewPostForm } from '@/components/forum/new-post-form'
 
 interface ThreadPageProps {
   params: {
-    categorySlug: string;
-    threadSlug: string;
-  };
-}
-
-interface Post {
-  id: string;
-  content: string;
-  createdAt: string;
-  author: {
-    id: string;
-    name: string;
-    image: string | null;
-  };
-  comments: Array<{
-    id: string;
-    content: string;
-    createdAt: string;
-    author: {
-      id: string;
-      name: string;
-      image: string | null;
-    };
-  }>;
-}
-
-interface Thread {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-  isPinned: boolean;
-  isLocked: boolean;
-  author: {
-    id: string;
-    name: string;
-    image: string | null;
-  };
-  posts: Post[];
-}
-
-async function getThread(categorySlug: string, threadSlug: string): Promise<Thread | null> {
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/forum/threads/by-slug/${threadSlug}?categorySlug=${categorySlug}`,
-    { cache: 'no-store' }
-  );
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      return null;
-    }
-    throw new Error('Failed to fetch thread');
+    categorySlug: string
+    threadSlug: string
   }
+}
 
-  return response.json();
+async function getThread(threadId: string) {
+  const thread = await prisma.thread.findUnique({
+    where: { id: threadId },
+    include: {
+      author: {
+        select: {
+          name: true,
+          image: true,
+        },
+      },
+      category: true,
+      posts: {
+        include: {
+          author: {
+            select: {
+              name: true,
+              image: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      },
+    },
+  })
+
+  return thread
 }
 
 export default async function ThreadPage({ params }: ThreadPageProps) {
-  const thread = await getThread(params.categorySlug, params.threadSlug);
+  const thread = await getThread(params.threadSlug)
 
   if (!thread) {
-    notFound();
+    notFound()
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Suspense fallback={<div>Loading thread...</div>}>
-        <ThreadDetail
-          thread={{
-            id: thread.id,
-            title: thread.title,
-            content: thread.content,
-            createdAt: new Date(thread.createdAt),
-            isPinned: thread.isPinned,
-            isLocked: thread.isLocked,
-            author: {
-              id: thread.author.id,
-              username: thread.author.name || 'Anonymous',
-              avatarUrl: thread.author.image || undefined,
-            },
-            tags: [], // TODO: Add tags support
-          }}
-          comments={thread.posts.map((post: Post) => ({
-            id: post.id,
-            content: post.content,
-            createdAt: new Date(post.createdAt),
-            author: {
-              id: post.author.id,
-              username: post.author.name || 'Anonymous',
-              avatarUrl: post.author.image || undefined,
-            },
-            likes: 0, // TODO: Add likes support
-            replies: post.comments.map((comment) => ({
-              id: comment.id,
-              content: comment.content,
-              createdAt: new Date(comment.createdAt),
-              author: {
-                id: comment.author.id,
-                username: comment.author.name || 'Anonymous',
-                avatarUrl: comment.author.image || undefined,
-              },
-              likes: 0,
-              replies: [],
-            })),
-          }))}
-        />
-      </Suspense>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">{thread.title}</h1>
+        <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+          <span>Posted by {thread.author.name}</span>
+          <span>•</span>
+          <span>in {thread.category.name}</span>
+        </div>
+      </div>
+
+      <div className="grid gap-8">
+        <PostList posts={thread.posts} />
+        <NewPostForm threadId={thread.id} />
+      </div>
     </div>
-  );
+  )
 } 

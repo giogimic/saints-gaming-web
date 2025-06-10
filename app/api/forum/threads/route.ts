@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-config';
-import { hasPermission } from '@/lib/permissions';
-import { UserRole } from '@/lib/permissions';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { slugify } from '@/lib/utils';
 
 const threadSchema = z.object({
   title: z.string().min(1).max(200),
@@ -90,32 +87,15 @@ export async function POST(req: Request) {
       return new NextResponse('Category not found', { status: 404 });
     }
 
-    const slug = slugify(title);
-    const existingThread = await prisma.thread.findFirst({
-      where: {
-        categoryId,
-        slug,
-      },
-    });
-
-    if (existingThread) {
-      return new NextResponse('A thread with this title already exists', { status: 409 });
-    }
-
     const thread = await prisma.thread.create({
       data: {
         title,
         content,
-        slug,
         authorId: session.user.id,
         categoryId,
       },
       include: {
-        category: {
-          select: {
-            slug: true,
-          },
-        },
+        category: true,
       },
     });
 

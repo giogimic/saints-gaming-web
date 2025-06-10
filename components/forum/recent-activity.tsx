@@ -1,101 +1,158 @@
-import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-interface RecentActivityProps {
-  recentThreads: Array<{
-    id: string;
+interface ActivityItem {
+  id: string;
+  type: 'thread' | 'post';
+  title?: string;
+  content?: string;
+  createdAt: string;
+  updatedAt?: string;
+  author: {
+    name: string;
+    image: string | null;
+  };
+  category?: {
+    name: string;
+    slug: string;
+  };
+  thread?: {
     title: string;
     slug: string;
-    content: string;
-    createdAt: Date;
-    author: {
-      id: string;
-      name: string | null;
-    };
     category: {
-      id: string;
-      name: string;
       slug: string;
     };
-  }>;
-  recentPosts: Array<{
-    id: string;
-    content: string;
-    createdAt: Date;
-    author: {
-      id: string;
-      name: string | null;
-    };
-    thread: {
-      id: string;
-      title: string;
-      slug: string;
-      category: {
-        id: string;
-        name: string;
-        slug: string;
-      };
-    };
-  }>;
+  };
+  url: string;
 }
 
-export function RecentActivity({ recentThreads, recentPosts }: RecentActivityProps) {
-  const activity = [
-    ...recentThreads.map((thread) => ({
-      id: thread.id,
-      type: 'thread' as const,
-      title: thread.title,
-      content: thread.content,
-      createdAt: thread.createdAt,
-      author: thread.author,
-      category: thread.category,
-      thread: { slug: thread.slug },
-    })),
-    ...recentPosts.map((post) => ({
-      id: post.id,
-      type: 'post' as const,
-      title: post.thread.title,
-      content: post.content,
-      createdAt: post.createdAt,
-      author: post.author,
-      category: post.thread.category,
-      thread: { slug: post.thread.slug },
-    })),
-  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, 10);
+export function RecentActivity() {
+  const [items, setItems] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRecentActivity = async () => {
+      try {
+        const response = await fetch('/api/forum/recent-activity');
+        if (!response.ok) {
+          throw new Error('Failed to fetch recent activity');
+        }
+        const data = await response.json();
+        setItems(data);
+      } catch (err) {
+        console.error('Error fetching recent activity:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load recent activity');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecentActivity();
+  }, []);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-start space-x-4">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-red-500">{error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!items || items.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">No recent activity</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      {activity.map((item) => (
-        <div key={item.id} className="border-b pb-4 last:border-0">
-          <div className="flex items-start gap-2">
-            <div className="flex-1 min-w-0">
-              <Link
-                href={`/forum/${item.category.slug}/${item.thread.slug}`}
-                className="text-sm font-medium hover:text-blue-600 truncate"
-              >
-                {item.title}
-              </Link>
-              <p className="text-sm text-gray-500 truncate">
-                {item.content}
-              </p>
-              <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                <span>
-                  {item.author.name || 'Anonymous'} in{' '}
+    <Card>
+      <CardHeader>
+        <CardTitle>Recent Activity</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start space-x-4">
+                <Avatar>
+                  <AvatarImage src={item.author.image || undefined} />
+                  <AvatarFallback>
+                    {item.author.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      {item.author.name}
+                    </p>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                    </span>
+                  </div>
                   <Link
-                    href={`/forum/${item.category.slug}`}
-                    className="hover:text-blue-600"
+                    href={item.url}
+                    className="block mt-1 text-sm hover:underline"
                   >
-                    {item.category.name}
+                    {item.type === 'thread' ? (
+                      <span className="font-medium">{item.title}</span>
+                    ) : (
+                      <span className="line-clamp-2">{item.content}</span>
+                    )}
                   </Link>
-                </span>
-                <span>•</span>
-                <span>{formatDistanceToNow(item.createdAt, { addSuffix: true })}</span>
+                  {item.type === 'post' && item.thread && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      in thread: {item.thread.title}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          ))}
         </div>
-      ))}
-    </div>
+      </CardContent>
+    </Card>
   );
 } 

@@ -5,13 +5,14 @@ import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { User } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import { MessageSquare, ThumbsUp } from "lucide-react";
 
 interface UserProfileProps {
   user: User & {
     threads: Array<{
       id: string;
       title: string;
-      slug: string;
+      createdAt: Date;
       category: {
         name: string;
         slug: string;
@@ -20,9 +21,10 @@ interface UserProfileProps {
     posts: Array<{
       id: string;
       content: string;
+      createdAt: Date;
       thread: {
+        id: string;
         title: string;
-        slug: string;
         category: {
           name: string;
           slug: string;
@@ -32,10 +34,12 @@ interface UserProfileProps {
     comments: Array<{
       id: string;
       content: string;
+      createdAt: Date;
       post: {
+        id: string;
         thread: {
+          id: string;
           title: string;
-          slug: string;
           category: {
             name: string;
             slug: string;
@@ -55,103 +59,96 @@ interface UserProfileProps {
 
 export function UserProfile({ user, stats }: UserProfileProps) {
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={user.image || undefined} alt={user.name || ""} />
-              <AvatarFallback>
-                {user.name?.charAt(0).toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="text-lg font-semibold">{user.name}</h3>
-              <div className={cn(badgeVariants({ variant: "secondary" }), "mt-1")}>
-                {user.role}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Joined {formatDistanceToNow(stats.joinDate)} ago
+    <div className="space-y-8">
+      <div className="flex items-center gap-4">
+        {user.image ? (
+          <img
+            src={user.image}
+            alt={user.name || 'User'}
+            className="w-16 h-16 rounded-full"
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+            <User className="w-8 h-8 text-gray-500 dark:text-gray-400" />
+          </div>
+        )}
+        <div>
+          <h2 className="text-2xl font-bold">{user.name}</h2>
+        </div>
+      </div>
+
+      <section>
+        <h3 className="text-xl font-semibold mb-4">Recent Threads</h3>
+        <div className="space-y-4">
+          {user.threads.map((thread) => (
+            <div
+              key={thread.id}
+              className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow"
+            >
+              <Link
+                href={`/forum/thread/${thread.id}`}
+                className="text-lg font-medium hover:text-primary"
+              >
+                {thread.title}
+              </Link>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Posted in {thread.category.name} •{' '}
+                {formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true })}
               </p>
             </div>
-          </div>
-          {user.bio && (
-            <p className="text-sm text-muted-foreground">{user.bio}</p>
-          )}
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold">{stats.totalThreads}</div>
-              <div className="text-xs text-muted-foreground">Threads</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{stats.totalPosts}</div>
-              <div className="text-xs text-muted-foreground">Posts</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{stats.totalComments}</div>
-              <div className="text-xs text-muted-foreground">Comments</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {user.threads.map((thread) => (
-            <div key={thread.id} className="flex items-start gap-2">
-              <div className="flex-1">
-                <Link
-                  href={`/forum/${thread.category.slug}/${thread.slug}`}
-                  className="text-sm font-medium hover:underline"
-                >
-                  {thread.title}
-                </Link>
-                <p className="text-xs text-muted-foreground">
-                  in {thread.category.name}
-                </p>
-              </div>
-            </div>
           ))}
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-xl font-semibold mb-4">Recent Posts</h3>
+        <div className="space-y-4">
           {user.posts.map((post) => (
-            <div key={post.id} className="flex items-start gap-2">
-              <div className="flex-1">
+            <div
+              key={post.id}
+              className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow"
+            >
+              <p className="text-gray-900 dark:text-white">{post.content}</p>
+              <div className="mt-2 flex items-center gap-4 text-sm">
                 <Link
-                  href={`/forum/${post.thread.category.slug}/${post.thread.slug}`}
-                  className="text-sm font-medium hover:underline"
+                  href={`/forum/thread/${post.thread.id}`}
+                  className="text-primary hover:underline"
                 >
                   {post.thread.title}
                 </Link>
-                <p className="text-xs text-muted-foreground">
-                  {post.content.substring(0, 100)}
-                  {post.content.length > 100 ? "..." : ""}
-                </p>
+                <span className="text-gray-500 dark:text-gray-400">
+                  {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                </span>
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-xl font-semibold mb-4">Recent Comments</h3>
+        <div className="space-y-4">
           {user.comments.map((comment) => (
-            <div key={comment.id} className="flex items-start gap-2">
-              <div className="flex-1">
+            <div
+              key={comment.id}
+              className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow"
+            >
+              <p className="text-gray-900 dark:text-white">{comment.content}</p>
+              <div className="mt-2 flex items-center gap-4 text-sm">
                 <Link
-                  href={`/forum/${comment.post.thread.category.slug}/${comment.post.thread.slug}`}
-                  className="text-sm font-medium hover:underline"
+                  href={`/forum/thread/${comment.post.thread.id}`}
+                  className="text-primary hover:underline"
                 >
                   {comment.post.thread.title}
                 </Link>
-                <p className="text-xs text-muted-foreground">
-                  {comment.content.substring(0, 100)}
-                  {comment.content.length > 100 ? "..." : ""}
-                </p>
+                <span className="text-gray-500 dark:text-gray-400">
+                  {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                </span>
               </div>
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 } 

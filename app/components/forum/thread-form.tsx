@@ -4,39 +4,27 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { TiptapEditor } from '@/components/tiptap-editor';
-import { useSession } from 'next-auth/react';
-import { hasPermission } from '@/lib/permissions';
-import { toast } from '@/components/ui/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 
 interface ThreadFormProps {
-  children?: React.ReactNode;
-  categoryId?: string;
-  thread?: {
-    id: string;
-    title: string;
-    content: string;
-    isLocked?: boolean;
-  };
+  categoryId: string;
+  onSuccess?: () => void;
 }
 
-export function ThreadForm({ children, categoryId, thread }: ThreadFormProps) {
+export function ThreadForm({ categoryId, onSuccess }: ThreadFormProps) {
   const router = useRouter();
-  const { data: session } = useSession();
-  const [title, setTitle] = useState(thread?.title || '');
-  const [content, setContent] = useState(thread?.content || '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const canManageThreads = session?.user && hasPermission(session.user.role, 'manage:content');
-  const canEdit = !thread?.isLocked || canManageThreads;
+  const [isLoading, setIsLoading] = useState(false);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/forum/threads${thread ? `/${thread.id}` : ''}`, {
-        method: thread ? 'PUT' : 'POST',
+      const response = await fetch('/api/forum/threads', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -48,48 +36,51 @@ export function ThreadForm({ children, categoryId, thread }: ThreadFormProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save thread');
+        throw new Error('Failed to create thread');
       }
 
       const data = await response.json();
-      router.push(`/forum/${data.category.slug}/${data.slug}`);
-      router.refresh();
+      toast.success('Thread created successfully');
+      router.push(`/forum/thread/${data.id}`);
+      onSuccess?.();
     } catch (error) {
-      console.error('Error saving thread:', error);
-      toast.error('Failed to save thread');
+      toast.error('Failed to create thread');
+      console.error('Error creating thread:', error);
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
-
-  if (!canEdit) {
-    return (
-      <div className="text-center text-muted-foreground">
-        <p>This thread is locked. Only moderators can edit it.</p>
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
+        <label htmlFor="title" className="block text-sm font-medium mb-1">
+          Title
+        </label>
         <Input
-          type="text"
-          placeholder="Thread title"
+          id="title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter thread title"
           required
         />
       </div>
       <div>
-        <TiptapEditor content={content} onChange={setContent} />
+        <label htmlFor="content" className="block text-sm font-medium mb-1">
+          Content
+        </label>
+        <Textarea
+          id="content"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Enter thread content"
+          required
+          rows={5}
+        />
       </div>
-      <div className="flex justify-end gap-2">
-        {children}
-        <Button type="submit" disabled={isSubmitting}>
-          {thread ? 'Update Thread' : 'Create Thread'}
-        </Button>
-      </div>
+      <Button type="submit" disabled={isLoading}>
+        {isLoading ? 'Creating...' : 'Create Thread'}
+      </Button>
     </form>
   );
 } 

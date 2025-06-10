@@ -13,6 +13,7 @@ import { toast } from '@/components/ui/use-toast';
 import prisma from '@/lib/prisma';
 import { ThreadList } from '@/components/forum/thread-list';
 import { notFound } from 'next/navigation';
+import { NewThreadButton } from '@/components/forum/new-thread-button';
 
 interface Category {
   id: string;
@@ -262,14 +263,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
             <p className="text-muted-foreground mt-2">{category.description}</p>
           )}
         </div>
-        {canCreateThread && (
-          <ThreadForm categoryId={category.id}>
-            <Button>
-              <PlusCircle className="w-4 h-4 mr-2" />
-              New Thread
-            </Button>
-          </ThreadForm>
-        )}
+        <NewThreadButton categoryId={category.id} />
       </div>
 
       <Suspense fallback={<div>Loading threads...</div>}>

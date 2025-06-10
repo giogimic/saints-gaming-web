@@ -4,26 +4,18 @@ import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-
-interface Thread {
-  id: string;
-  title: string;
-  slug: string;
-  createdAt: Date;
-  updatedAt: Date;
-  isPinned: boolean;
-  isLocked: boolean;
-  author: {
-    username: string;
-  };
-  _count: {
-    posts: number;
-  };
-  tags: string[];
-}
+import { Thread } from '@prisma/client';
 
 interface ThreadListProps {
-  threads: Thread[];
+  threads: (Thread & {
+    author: {
+      name: string | null;
+      image: string | null;
+    };
+    _count: {
+      posts: number;
+    };
+  })[];
   currentPage: number;
   totalPages: number;
   categorySlug: string;
@@ -53,55 +45,25 @@ export function ThreadList({ threads, currentPage, totalPages, categorySlug, sor
 
       <div className="space-y-4">
         {threads.map((thread) => (
-          <div key={thread.id} className="card bg-base-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="card-body p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <Link href={`/forum/${categorySlug}/${thread.slug}`} className="hover:text-primary">
-                      <h3 className="text-lg font-semibold">{thread.title}</h3>
-                    </Link>
-                    {thread.isPinned && (
-                      <Badge variant="secondary">
-                        <Pin className="w-3 h-3 mr-1" />
-                        Pinned
-                      </Badge>
-                    )}
-                    {thread.isLocked && (
-                      <Badge variant="destructive">
-                        <Lock className="w-3 h-3 mr-1" />
-                        Locked
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 mt-2 text-sm text-base-content/70">
-                    <div className="flex items-center gap-1">
-                      <User className="w-4 h-4" />
-                      <span>{thread.author.username}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MessageSquare className="w-4 h-4" />
-                      <span>{thread._count.posts}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>{formatDistanceToNow(thread.updatedAt, { addSuffix: true })}</span>
-                    </div>
-                  </div>
-                  {thread.tags.length > 0 && (
-                    <div className="flex gap-2 mt-2">
-                      {thread.tags.map((tag) => (
-                        <span key={tag} className="badge badge-sm">
-                          <Tag className="w-3 h-3 mr-1" />
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+          <Link
+            key={thread.id}
+            href={`/forum/thread/${thread.id}`}
+            className="block p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {thread.title}
+                </h3>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Posted by {thread.author.name} • {formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true })}
+                </p>
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                {thread._count.posts} {thread._count.posts === 1 ? 'reply' : 'replies'}
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
