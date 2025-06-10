@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "latest",
+    "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.1.1",
     "@next-auth/prisma-adapter": "latest",
     "@prisma/client": "latest",
@@ -26,6 +27,7 @@
     "@radix-ui/react-dropdown-menu": "latest",
     "@radix-ui/react-hover-card": "latest",
     "@radix-ui/react-label": "latest",
+    "@radix-ui/react-scroll-area": "^1.2.9",
     "@radix-ui/react-select": "latest",
     "@radix-ui/react-slot": "latest",
     "@radix-ui/react-switch": "latest",
@@ -36,6 +38,7 @@
     "@tiptap/core": "latest",
     "@tiptap/extension-image": "latest",
     "@tiptap/extension-link": "latest",
+    "@tiptap/extension-text-align": "^2.14.0",
     "@tiptap/react": "latest",
     "@tiptap/starter-kit": "latest",
     "@types/better-sqlite3": "latest",

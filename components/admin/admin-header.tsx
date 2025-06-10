@@ -1,23 +1,18 @@
 "use client"
 
-import { User } from "@prisma/client"
+import { UserRole } from "@prisma/client"
 import { Bell, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { signOut } from "next-auth/react"
-import { useState } from "react"
-import { UserNav } from "@/components/admin/user-nav"
+import { UserNav } from "@/components/user-nav"
 
 interface AdminHeaderProps {
-  user: User
+  user: {
+    id: string
+    name: string | null
+    role: UserRole
+    image: string | null
+    email: string | null
+  }
   isSidebarOpen: boolean
   onSidebarToggle: () => void
 }
@@ -39,7 +34,7 @@ export function AdminHeader({ user, isSidebarOpen, onSidebarToggle }: AdminHeade
           <div className="w-full flex-1 md:w-auto md:flex-none">
             {/* Add search or other header content here */}
           </div>
-          <UserNav user={user} />
+          <UserNav isAdmin={true} />
         </div>
       </div>
     </header>

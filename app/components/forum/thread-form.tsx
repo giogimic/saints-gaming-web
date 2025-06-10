@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Editor } from '@/components/editor';
+import { TiptapEditor } from '@/components/tiptap-editor';
 import { useSession } from 'next-auth/react';
 import { hasPermission } from '@/lib/permissions';
 import { toast } from '@/components/ui/use-toast';
@@ -82,7 +82,7 @@ export function ThreadForm({ children, categoryId, thread }: ThreadFormProps) {
         />
       </div>
       <div>
-        <Editor value={content} onChange={setContent} />
+        <TiptapEditor content={content} onChange={setContent} />
       </div>
       <div className="flex justify-end gap-2">
         {children}

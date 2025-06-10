@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Editor } from '@/components/editor';
+import { TiptapEditor } from '@/components/tiptap-editor';
 import { useSession } from 'next-auth/react';
 import { hasPermission } from '@/lib/permissions';
 import { toast } from '@/components/ui/use-toast';
@@ -206,10 +206,9 @@ export function ThreadDetail({ thread, comments }: ThreadDetailProps) {
             {canPost ? (
               <Card className="p-4">
                 <h3 className="text-lg font-semibold mb-4">Post a Reply</h3>
-                <Editor
-                  value={replyContent}
+                <TiptapEditor
+                  content={replyContent}
                   onChange={setReplyContent}
-                  placeholder="Write your reply..."
                 />
                 <div className="flex justify-end mt-4">
                   <Button>Post Reply</Button>

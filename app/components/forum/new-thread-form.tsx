@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Editor } from '@/components/editor';
+import { TiptapEditor } from '@/components/tiptap-editor';
 import { toast } from 'sonner';
 
 interface NewThreadFormProps {
@@ -66,10 +66,9 @@ export function NewThreadForm({ categoryId }: NewThreadFormProps) {
         />
       </div>
       <div>
-        <Editor
-          value={content}
+        <TiptapEditor
+          content={content}
           onChange={setContent}
-          placeholder="Write your thread content..."
         />
       </div>
       <div className="flex justify-end">

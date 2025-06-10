@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post, Category } from "@/lib/types";
 import { UserRole } from "@/lib/permissions";
-import { Search, Plus, Pin, Trash2, Edit, Edit2, Eye, Settings } from "lucide-react";
+import { Search, Plus, Pin, Trash2, Edit, Edit2, Eye, Settings, Loader2, Save } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import {
   Table,
@@ -40,19 +40,25 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { TiptapEditor } from '@/components/tiptap-editor';
+import { ContentBlockManager } from "@/components/content-block-manager";
 
 interface Page {
   id: string;
   title: string;
   slug: string;
-  content: string;
-  excerpt?: string;
-  imageUrl?: string;
+  description: string | null;
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
-  description: string | null;
   template: string | null;
+  metadata: any;
+  parentId: string | null;
+  parent?: Page | null;
+  children?: Page[];
+  _count?: {
+    blocks: number;
+  };
 }
 
 interface Block {
@@ -66,6 +72,35 @@ interface Block {
   updatedAt: string;
   isPublished: boolean;
   settings: any;
+}
+
+interface BlockSettings {
+  imageUrl?: string;
+  videoUrl?: string;
+  buttonText?: string;
+  buttonUrl?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  alignment?: "left" | "center" | "right";
+  padding?: string;
+  margin?: string;
+  borderRadius?: string;
+  shadow?: string;
+  opacity?: number;
+  animation?: string;
+  customClass?: string;
+}
+
+interface ContentBlock {
+  id: string;
+  type: string;
+  content: string;
+  settings: BlockSettings;
+  title: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  isPublished: boolean;
 }
 
 const BLOCK_TYPES = [
@@ -87,7 +122,7 @@ export default function ContentManagementPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [pages, setPages] = useState<Page[]>([]);
-  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [blocks, setBlocks] = useState<ContentBlock[]>([]);
   const [selectedPage, setSelectedPage] = useState<Page | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
   const [showRevisions, setShowRevisions] = useState(false);
@@ -99,14 +134,17 @@ export default function ContentManagementPage() {
     description: '',
     template: '',
     isPublished: false,
+    parentId: null as string | null,
+    metadata: {},
   });
   const [blockFormData, setBlockFormData] = useState({
     type: '',
     title: '',
-    content: {},
+    content: '',
     settings: {},
     isPublished: false,
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   const canEdit = session?.user?.role && [UserRole.ADMIN, UserRole.MODERATOR].includes(session.user.role);
 
@@ -168,9 +206,12 @@ export default function ContentManagementPage() {
     }
   };
 
-  const fetchBlocks = async () => {
+  const fetchBlocks = async (pageId?: string) => {
     try {
-      const res = await fetch('/api/admin/content/blocks');
+      const url = pageId 
+        ? `/api/admin/content/blocks?pageId=${pageId}`
+        : '/api/admin/content/blocks';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch blocks');
       const data = await res.json();
       setBlocks(data);
@@ -324,14 +365,22 @@ export default function ContentManagementPage() {
   };
 
   const handleDeleteBlock = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this block?')) return;
+
     try {
-      const res = await fetch('/api/admin/content/blocks', {
+      const response = await fetch(`/api/admin/content/blocks?id=${id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
       });
-      if (!res.ok) throw new Error('Failed to delete block');
-      await fetchBlocks();
+
+      if (!response.ok) throw new Error('Failed to delete block');
+
+      if (selectedPage) {
+        await fetchBlocks(selectedPage.id);
+      }
+      toast({
+        title: 'Success',
+        description: 'Block deleted successfully',
+      });
     } catch (error) {
       console.error('Error deleting block:', error);
       toast({
@@ -346,13 +395,20 @@ export default function ContentManagementPage() {
     e.preventDefault();
     try {
       const url = selectedPage
-        ? `/api/admin/content/pages/${selectedPage.id}`
+        ? `/api/admin/content/pages`
         : '/api/admin/content/pages';
       
       const response = await fetch(url, {
         method: selectedPage ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(selectedPage ? { 
+          id: selectedPage.id, 
+          ...formData,
+          metadata: formData.metadata || {},
+        } : {
+          ...formData,
+          metadata: formData.metadata || {},
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to save page');
@@ -366,6 +422,8 @@ export default function ContentManagementPage() {
         description: '',
         template: '',
         isPublished: false,
+        parentId: null,
+        metadata: {},
       });
       
       toast({
@@ -388,7 +446,7 @@ export default function ContentManagementPage() {
 
     try {
       const url = selectedBlock
-        ? `/api/admin/content/blocks/${selectedBlock.id}`
+        ? `/api/admin/content/blocks`
         : '/api/admin/content/blocks';
       
       const response = await fetch(url, {
@@ -397,6 +455,7 @@ export default function ContentManagementPage() {
         body: JSON.stringify({
           ...blockFormData,
           pageId: selectedPage.id,
+          ...(selectedBlock ? { id: selectedBlock.id } : {}),
         }),
       });
 
@@ -408,7 +467,7 @@ export default function ContentManagementPage() {
       setBlockFormData({
         type: '',
         title: '',
-        content: {},
+        content: '',
         settings: {},
         isPublished: false,
       });
@@ -435,6 +494,8 @@ export default function ContentManagementPage() {
       description: page.description || '',
       template: page.template || '',
       isPublished: page.isPublished,
+      parentId: page.parentId,
+      metadata: page.metadata || {},
     });
     setIsPageDialogOpen(true);
   };
@@ -452,20 +513,15 @@ export default function ContentManagementPage() {
   };
 
   const handlePageDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this page?')) return;
-
     try {
-      const response = await fetch(`/api/admin/content/pages/${id}`, {
+      const res = await fetch(`/api/admin/content/pages?id=${id}`, {
         method: 'DELETE',
       });
-
-      if (!response.ok) throw new Error('Failed to delete page');
-
+      if (!res.ok) throw new Error('Failed to delete page');
       await fetchPages();
-      toast({
-        title: 'Success',
-        description: 'Page deleted successfully',
-      });
+      if (selectedPage?.id === id) {
+        setSelectedPage(null);
+      }
     } catch (error) {
       console.error('Error deleting page:', error);
       toast({
@@ -480,7 +536,7 @@ export default function ContentManagementPage() {
     if (!confirm('Are you sure you want to delete this block?')) return;
 
     try {
-      const response = await fetch(`/api/admin/content/blocks/${id}`, {
+      const response = await fetch(`/api/admin/content/blocks?id=${id}`, {
         method: 'DELETE',
       });
 
@@ -508,6 +564,36 @@ export default function ContentManagementPage() {
     fetchBlocks(page.id);
   };
 
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      const response = await fetch("/api/admin/content/blocks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ blocks }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save blocks");
+      }
+
+      toast({
+        title: "Success",
+        description: "Content blocks saved successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save content blocks",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (!canEdit) {
     return <div>Access denied</div>;
   }
@@ -531,6 +617,8 @@ export default function ContentManagementPage() {
                   description: '',
                   template: '',
                   isPublished: false,
+                  parentId: null,
+                  metadata: {},
                 });
               }}>
                 <Plus className="w-4 h-4 mr-2" />
@@ -572,10 +660,55 @@ export default function ContentManagementPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="template">Template</Label>
-                  <Input
-                    id="template"
-                    value={formData.template}
-                    onChange={(e) => setFormData({ ...formData, template: e.target.value })}
+                  <Select
+                    value={formData.template || 'default'}
+                    onValueChange={(value) => setFormData({ ...formData, template: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Default</SelectItem>
+                      <SelectItem value="landing">Landing Page</SelectItem>
+                      <SelectItem value="blog">Blog Post</SelectItem>
+                      <SelectItem value="gallery">Gallery</SelectItem>
+                      <SelectItem value="contact">Contact</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="parentId">Parent Page</Label>
+                  <Select
+                    value={formData.parentId || 'none'}
+                    onValueChange={(value) => setFormData({ ...formData, parentId: value === 'none' ? null : value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select parent page" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {pages.map((page) => (
+                        <SelectItem key={page.id} value={page.id}>
+                          {page.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="metadata">Metadata (JSON)</Label>
+                  <Textarea
+                    id="metadata"
+                    value={JSON.stringify(formData.metadata, null, 2)}
+                    onChange={(e) => {
+                      try {
+                        const metadata = JSON.parse(e.target.value);
+                        setFormData({ ...formData, metadata });
+                      } catch (error) {
+                        // Handle invalid JSON
+                      }
+                    }}
+                    placeholder="Enter metadata as JSON"
                   />
                 </div>
                 <div className="flex items-center space-x-2">
@@ -601,10 +734,23 @@ export default function ContentManagementPage() {
               </form>
             </DialogContent>
           </Dialog>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="space-y-8">
         <div>
           <h2 className="text-xl font-semibold mb-4">Pages</h2>
           <Table>
@@ -612,6 +758,7 @@ export default function ContentManagementPage() {
               <TableRow>
                 <TableHead>Title</TableHead>
                 <TableHead>Slug</TableHead>
+                <TableHead>Template</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -623,8 +770,16 @@ export default function ContentManagementPage() {
                   className={selectedPage?.id === page.id ? 'bg-muted' : ''}
                   onClick={() => handlePageSelect(page)}
                 >
-                  <TableCell>{page.title}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {page.parent && (
+                        <span className="text-muted-foreground">↳</span>
+                      )}
+                      {page.title}
+                    </div>
+                  </TableCell>
                   <TableCell>{page.slug}</TableCell>
+                  <TableCell>{page.template || 'Default'}</TableCell>
                   <TableCell>
                     {page.isPublished ? 'Published' : 'Draft'}
                   </TableCell>
@@ -681,7 +836,7 @@ export default function ContentManagementPage() {
                     setBlockFormData({
                       type: '',
                       title: '',
-                      content: {},
+                      content: '',
                       settings: {},
                       isPublished: false,
                     });
@@ -696,54 +851,44 @@ export default function ContentManagementPage() {
                       {selectedBlock ? 'Edit Block' : 'New Block'}
                     </DialogTitle>
                   </DialogHeader>
-                  <form onSubmit={handleBlockSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="blockType">Type</Label>
-                      <Select
-                        value={blockFormData.type}
-                        onValueChange={(value) => setBlockFormData({ ...blockFormData, type: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select block type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BLOCK_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="blockTitle">Title</Label>
-                      <Input
-                        id="blockTitle"
-                        value={blockFormData.title}
-                        onChange={(e) => setBlockFormData({ ...blockFormData, title: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="blockIsPublished"
-                        checked={blockFormData.isPublished}
-                        onCheckedChange={(checked) => setBlockFormData({ ...blockFormData, isPublished: checked })}
-                      />
-                      <Label htmlFor="blockIsPublished">Published</Label>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsBlockDialogOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit">
-                        {selectedBlock ? 'Update' : 'Create'}
-                      </Button>
-                    </div>
-                  </form>
+                  <BlockEditor
+                    block={selectedBlock}
+                    onSave={async (data) => {
+                      try {
+                        const url = selectedBlock
+                          ? `/api/admin/content/blocks`
+                          : '/api/admin/content/blocks';
+                        
+                        const response = await fetch(url, {
+                          method: selectedBlock ? 'PATCH' : 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            ...data,
+                            pageId: selectedPage?.id,
+                            ...(selectedBlock ? { id: selectedBlock.id } : {}),
+                          }),
+                        });
+
+                        if (!response.ok) throw new Error('Failed to save block');
+
+                        await fetchBlocks(selectedPage?.id);
+                        setIsBlockDialogOpen(false);
+                        setSelectedBlock(null);
+                        
+                        toast({
+                          title: 'Success',
+                          description: `Block ${selectedBlock ? 'updated' : 'created'} successfully`,
+                        });
+                      } catch (error) {
+                        console.error('Error saving block:', error);
+                        toast({
+                          title: 'Error',
+                          description: 'Failed to save block',
+                          variant: 'destructive',
+                        });
+                      }
+                    }}
+                  />
                 </DialogContent>
               </Dialog>
             </div>

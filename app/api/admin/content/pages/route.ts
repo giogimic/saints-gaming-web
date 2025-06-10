@@ -13,6 +13,7 @@ const pageSchema = z.object({
   template: z.string().optional(),
   isPublished: z.boolean().optional(),
   metadata: z.record(z.any()).optional(),
+  parentId: z.string().nullable().optional(),
 });
 
 export async function GET() {
@@ -30,10 +31,29 @@ export async function GET() {
             blocks: true,
           },
         },
+        parent: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
+        children: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: [
+        {
+          parentId: 'asc',
+        },
+        {
+          createdAt: 'desc',
+        },
+      ],
     })
 
     return NextResponse.json(pages)
@@ -56,11 +76,21 @@ export async function POST(req: Request) {
 
     const pageData: Prisma.PageUncheckedCreateInput = {
       ...validatedData,
-      createdById: session.user.id
+      createdById: session.user.id,
+      metadata: validatedData.metadata || {},
     }
 
     const page = await prisma.page.create({
-      data: pageData
+      data: pageData,
+      include: {
+        parent: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
+      },
     })
 
     return NextResponse.json(page)
@@ -108,7 +138,19 @@ export async function PATCH(req: Request) {
     const validatedData = pageSchema.parse(data)
     const updatedPage = await prisma.page.update({
       where: { id },
-      data: validatedData,
+      data: {
+        ...validatedData,
+        metadata: validatedData.metadata || {},
+      },
+      include: {
+        parent: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
+      },
     })
 
     return NextResponse.json(updatedPage)
@@ -143,13 +185,24 @@ export async function DELETE(req: Request) {
     }
 
     const page = await prisma.page.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        children: true,
+      },
     })
 
     if (!page) {
       return NextResponse.json(
         { error: "Page not found" },
         { status: 404 }
+      )
+    }
+
+    // Check if page has children
+    if (page.children.length > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete page with child pages. Please delete or reassign child pages first." },
+        { status: 400 }
       )
     }
 

@@ -23,8 +23,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { UserRole } from '@/lib/permissions';
 
-export function UserNav() {
+interface UserNavProps {
+  isAdmin?: boolean;
+}
+
+export function UserNav({ isAdmin = false }: UserNavProps) {
   const { data: session } = useSession();
 
   if (!session?.user) return null;
@@ -32,6 +37,8 @@ export function UserNav() {
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/' });
   };
+
+  const isAdminUser = session.user.role === UserRole.ADMIN;
 
   return (
     <DropdownMenu>
@@ -56,15 +63,29 @@ export function UserNav() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard">Dashboard</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/profile">Profile</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/settings">Settings</Link>
-        </DropdownMenuItem>
+        {!isAdmin && (
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard">Dashboard</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/profile">Profile</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings">Settings</Link>
+            </DropdownMenuItem>
+          </>
+        )}
+        {isAdminUser && (
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/dashboard">Admin Dashboard</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/settings">Admin Settings</Link>
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <AlertDialog>
           <AlertDialogTrigger asChild>

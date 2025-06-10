@@ -1,12 +1,18 @@
 "use client"
 
-import { User } from "@prisma/client"
+import { UserRole } from "@prisma/client"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import Link from "next/link"
 
 interface AdminToolbarProps {
-  user: User
+  user: {
+    id: string
+    name: string | null
+    role: UserRole
+    image: string | null
+    email: string | null
+  }
 }
 
 export function AdminToolbar({ user }: AdminToolbarProps) {
