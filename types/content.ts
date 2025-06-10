@@ -1,32 +1,68 @@
 export interface BlockSettings {
-  imageUrl?: string;
-  alt?: string;
-  videoUrl?: string;
-  videoType?: "youtube" | "vimeo" | "custom";
-  buttonText?: string;
-  buttonUrl?: string;
-  columns?: number;
-  authorName?: string;
-  authorTitle?: string;
-  price?: string;
-  currency?: string;
-  period?: string;
+  // Common settings
   backgroundColor?: string;
   textColor?: string;
-  alignment?: "left" | "center" | "right";
   padding?: string;
   margin?: string;
   borderRadius?: string;
-  shadow?: string;
+  shadow?: "none" | "sm" | "md" | "lg";
   opacity?: number;
-  animation?: string;
-  customClass?: string;
-  altText?: string;
-  buttonType?: "primary" | "secondary" | "outline" | "ghost";
+  animation?: "none" | "fade" | "slide" | "bounce";
+  alignment?: "left" | "center" | "right";
+
+  // Hero block settings
+  imageUrl?: string;
+  buttonText?: string;
+  buttonUrl?: string;
+
+  // Grid block settings
+  columns?: number;
   gap?: string;
-  embedUrl?: string;
-  embedType?: "iframe" | "script" | "custom";
-  fileUrl?: string;
-  fileName?: string;
-  fileType?: "document" | "image" | "video" | "audio" | "other";
+
+  // Card block settings
+  cardStyle?: "default" | "bordered" | "shadowed";
+  cardLayout?: "vertical" | "horizontal";
+
+  // Image block settings
+  altText?: string;
+  caption?: string;
+  imageSize?: "small" | "medium" | "large" | "full";
+  imageFit?: "cover" | "contain" | "fill";
+
+  // Button block settings
+  variant?: "default" | "secondary" | "outline" | "ghost";
+  size?: "sm" | "lg" | "default" | "icon";
+  icon?: string;
+
+  // Heading block settings
+  level?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+  weight?: "normal" | "medium" | "semibold" | "bold";
+
+  // Divider block settings
+  style?: "solid" | "dashed" | "dotted";
+  color?: string;
+  thickness?: string;
+
+  // Spacer block settings
+  height?: string;
+  width?: string;
+}
+
+export interface ContentBlock {
+  id: string;
+  type: string;
+  content: string;
+  settings?: BlockSettings;
+  title?: string;
+  order: number;
+}
+
+export interface Page {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string;
+  blocks: ContentBlock[];
+  createdAt: Date;
+  updatedAt: Date;
 } 

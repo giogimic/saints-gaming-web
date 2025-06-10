@@ -7,13 +7,14 @@ import { ServersPage } from '../components/pages/servers-page';
 import { AboutPage } from '../components/pages/about-page';
 import { ContactPage } from '../components/pages/contact-page';
 import { DynamicPage } from '../components/pages/dynamic-page';
-import { PageWrapper } from "@/components/page-wrapper"
-import { ContentBlockManager } from "@/components/content-block-manager"
+import { PageWrapperClient } from "@/components/page-wrapper-client"
+import { ContentBlockManagerClient } from "@/components/content-block-manager-client"
+import { useSession } from "next-auth/react";
+import { UserRole } from "@/lib/permissions";
+import { EditPageButton } from "@/components/edit-page-button";
 
 interface PageProps {
-  params: {
-    slug: string;
-  };
+  params: Promise<{ slug: string }>;
 }
 
 interface ContentBlock {
@@ -21,15 +22,33 @@ interface ContentBlock {
   type: string;
   content: string;
   settings: Record<string, any>;
-  title?: string;
   order: number;
-  isPublished: boolean;
-  pageId: string;
+}
+
+interface PageBlock {
+  id: string;
+  type: string;
+  content: any;
+  settings: any;
+  order: number;
+}
+
+function PageWrapper({ children, pageId }: { children: React.ReactNode; pageId: string }) {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === UserRole.ADMIN;
+
+  return (
+    <div className="relative">
+      {children}
+      {isAdmin && <EditPageButton pageId={pageId} />}
+    </div>
+  );
 }
 
 export async function generateMetadata({ params }: PageProps) {
+  const resolvedParams = await params;
   const page = await prisma.page.findUnique({
-    where: { slug: params.slug },
+    where: { slug: resolvedParams.slug },
   });
 
   if (!page) {
@@ -45,12 +64,17 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function Page({ params }: PageProps) {
+  const resolvedParams = await params;
   const page = await prisma.page.findUnique({
-    where: { slug: params.slug },
+    where: { slug: resolvedParams.slug },
     include: {
       blocks: {
-        where: { isPublished: true },
-        orderBy: { order: "asc" },
+        where: {
+          isPublished: true,
+        },
+        orderBy: {
+          order: "asc",
+        },
       },
     },
   });
@@ -59,42 +83,17 @@ export default async function Page({ params }: PageProps) {
     notFound();
   }
 
-  // Transform database blocks to match our ContentBlock interface
-  const blocks: ContentBlock[] = page.blocks.map((block) => ({
+  const blocks: ContentBlock[] = page.blocks.map((block: PageBlock) => ({
     id: block.id,
     type: block.type,
     content: typeof block.content === "string" ? block.content : JSON.stringify(block.content),
-    settings: block.settings as Record<string, any> || {},
-    title: block.title || undefined,
+    settings: block.settings,
     order: block.order,
-    isPublished: block.isPublished,
-    pageId: block.pageId,
   }));
 
-  // Get user session for conditional rendering
-  const session = await getServerSession(authOptions);
-
-  // Render different templates based on page type
-  switch (page.template) {
-    case 'home':
-      return <HomePage page={page} />;
-    case 'servers':
-      return <ServersPage page={page} />;
-    case 'about':
-      return <AboutPage page={page} />;
-    case 'contact':
-      return <ContactPage page={page} />;
-    default:
-      return (
-        <PageWrapper pageId={page.id}>
-          <div className="container mx-auto py-8">
-            <h1 className="text-4xl font-bold mb-8">{page.title}</h1>
-            <ContentBlockManager 
-              blocks={blocks} 
-              onBlocksChange={() => {}} // Read-only view, no changes allowed
-            />
-          </div>
-        </PageWrapper>
-      );
-  }
+  return (
+    <PageWrapperClient pageId={page.id}>
+      <ContentBlockManagerClient blocks={blocks} />
+    </PageWrapperClient>
+  );
 } 
