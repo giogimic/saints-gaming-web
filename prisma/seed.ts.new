@@ -1,0 +1,153 @@
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+async function main() {
+  // Create system user
+  const systemUser = await prisma.user.upsert({
+    where: { email: 'system@saintsgaming.com' },
+    update: {},
+    create: {
+      email: 'system@saintsgaming.com',
+      name: 'System',
+      role: 'admin',
+    },
+  });
+
+  // Create home page
+  await prisma.page.upsert({
+    where: { slug: 'home' },
+    update: {},
+    create: {
+      slug: 'home',
+      title: 'Home',
+      description: 'Welcome to Saints Gaming',
+      content: JSON.stringify({
+        heroTitle: { id: 'heroTitle', type: 'text', content: 'Welcome to Saints Gaming' },
+        heroSubtitle: { id: 'heroSubtitle', type: 'text', content: 'Your Ultimate Gaming Community' },
+        heroButton: { id: 'heroButton', type: 'text', content: 'Join Now' },
+        arkTitle: { id: 'arkTitle', type: 'text', content: 'ARK Server' },
+        arkDesc: { id: 'arkDesc', type: 'text', content: 'Experience the ultimate ARK survival adventure' },
+        arkStatus: { id: 'arkStatus', type: 'text', content: 'Online' },
+        arkPlayers: { id: 'arkPlayers', type: 'text', content: '0/70' },
+        arkVersion: { id: 'arkVersion', type: 'text', content: 'v1.0' },
+        arkIP: { id: 'arkIP', type: 'text', content: 'play.saintsgaming.com' },
+        arkJoin: { id: 'arkJoin', type: 'text', content: 'Join ARK Server' },
+        mcTitle: { id: 'mcTitle', type: 'text', content: 'Minecraft Server' },
+        mcDesc: { id: 'mcDesc', type: 'text', content: 'Join our vibrant Minecraft community' },
+        mcStatus: { id: 'mcStatus', type: 'text', content: 'Online' },
+        mcPlayers: { id: 'mcPlayers', type: 'text', content: '0/100' },
+        mcVersion: { id: 'mcVersion', type: 'text', content: '1.20.4' },
+        mcIP: { id: 'mcIP', type: 'text', content: 'mc.saintsgaming.com' },
+        mcJoin: { id: 'mcJoin', type: 'text', content: 'Join Minecraft Server' },
+        featuresTitle: { id: 'featuresTitle', type: 'text', content: 'Why Choose Us' },
+        featuresDesc: { id: 'featuresDesc', type: 'text', content: 'Experience gaming like never before' },
+        feature1: { id: 'feature1', type: 'text', content: 'High-performance servers with minimal lag' },
+        feature2: { id: 'feature2', type: 'text', content: 'Active and friendly community' },
+        feature3: { id: 'feature3', type: 'text', content: '24/7 support and regular updates' },
+        ctaTitle: { id: 'ctaTitle', type: 'text', content: 'Ready to Join?' },
+        ctaDesc: { id: 'ctaDesc', type: 'text', content: 'Start your adventure today' },
+        ctaButton: { id: 'ctaButton', type: 'text', content: 'Get Started' }
+      }),
+      isPublished: true,
+      createdById: systemUser.id,
+      template: 'home',
+    },
+  });
+
+  // Create about page
+  await prisma.page.upsert({
+    where: { slug: 'about' },
+    update: {},
+    create: {
+      slug: 'about',
+      title: 'About',
+      description: 'About Saints Gaming',
+      content: JSON.stringify({
+        heroTitle: { id: 'heroTitle', type: 'text', content: 'About Saints Gaming' },
+        heroSubtitle: { id: 'heroSubtitle', type: 'text', content: 'Your Ultimate Gaming Community' },
+        aboutTitle: { id: 'aboutTitle', type: 'text', content: 'Our Story' },
+        aboutContent: { id: 'aboutContent', type: 'text', content: 'Saints Gaming was founded with a simple mission: to create the best gaming community possible. We believe in providing high-quality servers, regular events, and a friendly environment for all players.' },
+        missionTitle: { id: 'missionTitle', type: 'text', content: 'Our Mission' },
+        missionContent: { id: 'missionContent', type: 'text', content: 'To provide an exceptional gaming experience through high-performance servers, active community engagement, and continuous improvement.' },
+        valuesTitle: { id: 'valuesTitle', type: 'text', content: 'Our Values' },
+        valuesContent: { id: 'valuesContent', type: 'text', content: 'Community, Quality, Innovation, and Fun are at the core of everything we do.' }
+      }),
+      isPublished: true,
+      createdById: systemUser.id,
+      template: 'about',
+    },
+  });
+
+  // Create contact page
+  await prisma.page.upsert({
+    where: { slug: 'contact' },
+    update: {},
+    create: {
+      slug: 'contact',
+      title: 'Contact',
+      description: 'Contact Saints Gaming',
+      content: JSON.stringify({
+        heroTitle: { id: 'heroTitle', type: 'text', content: 'Contact Us' },
+        heroSubtitle: { id: 'heroSubtitle', type: 'text', content: 'Get in touch with our team' },
+        contactTitle: { id: 'contactTitle', type: 'text', content: 'Send us a message' },
+        contactDesc: { id: 'contactDesc', type: 'text', content: 'Have questions or feedback? We\'d love to hear from you!' },
+        emailLabel: { id: 'emailLabel', type: 'text', content: 'Email' },
+        emailPlaceholder: { id: 'emailPlaceholder', type: 'text', content: 'Enter your email' },
+        messageLabel: { id: 'messageLabel', type: 'text', content: 'Message' },
+        messagePlaceholder: { id: 'messagePlaceholder', type: 'text', content: 'Enter your message' },
+        submitButton: { id: 'submitButton', type: 'text', content: 'Send Message' }
+      }),
+      isPublished: true,
+      createdById: systemUser.id,
+      template: 'contact',
+    },
+  });
+
+  // Create initial servers
+  const servers = [
+    {
+      name: 'ARK: Survival Ascended',
+      description: 'Our main ARK server',
+      image: '/images/ark-server.jpg',
+      status: 'online',
+      players: 0,
+      maxPlayers: 70,
+      version: 'v1.0',
+      ip: 'play.saintsgaming.com',
+      type: 'SURVIVAL',
+      features: '[]',
+      rules: '[]',
+      order: 1
+    },
+    {
+      name: 'Minecraft',
+      description: 'Our main Minecraft server',
+      image: '/images/minecraft-server.jpg',
+      status: 'online',
+      players: 0,
+      maxPlayers: 100,
+      version: '1.20.4',
+      ip: 'mc.saintsgaming.com',
+      type: 'SURVIVAL',
+      features: '[]',
+      rules: '[]',
+      order: 2
+    },
+  ];
+
+  for (const server of servers) {
+    await prisma.server.create({
+      data: server,
+    });
+  }
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  }); 

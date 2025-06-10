@@ -9,6 +9,9 @@ CREATE TABLE "User" (
     "role" TEXT NOT NULL DEFAULT 'member',
     "bio" TEXT,
     "steamId" TEXT,
+    "discordId" TEXT,
+    "twitchId" TEXT,
+    "avatar" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     "lastLogin" DATETIME
@@ -128,6 +131,7 @@ CREATE TABLE "Page" (
     "slug" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
+    "content" TEXT NOT NULL,
     "isPublished" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
@@ -160,29 +164,29 @@ CREATE TABLE "ContentBlock" (
 -- CreateTable
 CREATE TABLE "ContentRevision" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "content" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
-    "entityId" TEXT NOT NULL,
+    "content" JSONB NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "authorId" TEXT NOT NULL,
-    CONSTRAINT "ContentRevision_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "ContentRevision_entityId_fkey" FOREIGN KEY ("entityId") REFERENCES "Page" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "ContentRevision_entityId_fkey" FOREIGN KEY ("entityId") REFERENCES "ContentBlock" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    "updatedAt" DATETIME NOT NULL,
+    "createdById" TEXT NOT NULL,
+    "blockId" TEXT,
+    "pageId" TEXT,
+    CONSTRAINT "ContentRevision_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "ContentRevision_blockId_fkey" FOREIGN KEY ("blockId") REFERENCES "ContentBlock" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "ContentRevision_pageId_fkey" FOREIGN KEY ("pageId") REFERENCES "Page" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "Thread" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "title" TEXT NOT NULL,
-    "slug" TEXT NOT NULL,
     "content" TEXT NOT NULL,
+    "authorId" TEXT NOT NULL,
+    "categoryId" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
     "isPinned" BOOLEAN NOT NULL DEFAULT false,
     "isLocked" BOOLEAN NOT NULL DEFAULT false,
     "viewCount" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "authorId" TEXT NOT NULL,
-    "categoryId" TEXT NOT NULL,
     CONSTRAINT "Thread_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "Thread_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -192,10 +196,8 @@ CREATE TABLE "News" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "title" TEXT NOT NULL,
     "content" TEXT NOT NULL,
-    "excerpt" TEXT,
-    "imageUrl" TEXT,
-    "published" BOOLEAN NOT NULL DEFAULT false,
     "authorId" TEXT NOT NULL,
+    "published" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "News_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -205,6 +207,27 @@ CREATE TABLE "News" (
 CREATE TABLE "SiteSettings" (
     "id" TEXT NOT NULL PRIMARY KEY DEFAULT '1',
     "settings" JSONB NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "Server" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "image" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'offline',
+    "players" INTEGER NOT NULL DEFAULT 0,
+    "maxPlayers" INTEGER NOT NULL DEFAULT 0,
+    "version" TEXT NOT NULL,
+    "ip" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "features" TEXT NOT NULL DEFAULT '[]',
+    "rules" TEXT NOT NULL DEFAULT '[]',
+    "modpack" JSONB,
+    "metadata" JSONB,
+    "order" INTEGER NOT NULL DEFAULT 0,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
@@ -250,18 +273,3 @@ CREATE INDEX "ContentBlock_pageId_idx" ON "ContentBlock"("pageId");
 
 -- CreateIndex
 CREATE INDEX "ContentBlock_type_idx" ON "ContentBlock"("type");
-
--- CreateIndex
-CREATE INDEX "ContentRevision_authorId_idx" ON "ContentRevision"("authorId");
-
--- CreateIndex
-CREATE INDEX "ContentRevision_entityId_idx" ON "ContentRevision"("entityId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Thread_slug_key" ON "Thread"("slug");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Thread_categoryId_slug_key" ON "Thread"("categoryId", "slug");
-
--- CreateIndex
-CREATE INDEX "News_authorId_idx" ON "News"("authorId");

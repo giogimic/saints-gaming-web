@@ -2,46 +2,24 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
+import { toast } from '@/components/ui/use-toast'
 
 interface EditableTextProps {
   value: string
-  onSave: (value: string) => Promise<void>
-  type?: 'text' | 'textarea'
-  placeholder?: string
+  onSave: (value: string) => void
   className?: string
-  disabled?: boolean
+  multiline?: boolean
 }
 
-export function EditableText({
-  value,
-  onSave,
-  type = 'text',
-  placeholder,
-  className = '',
-  disabled = false,
-}: EditableTextProps) {
+export function EditableText({ value, onSave, className = '', multiline = false }: EditableTextProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedValue, setEditedValue] = useState(value)
-  const [isSaving, setIsSaving] = useState(false)
 
-  const handleSave = async () => {
-    if (editedValue === value) {
-      setIsEditing(false)
-      return
+  const handleSave = () => {
+    if (editedValue !== value) {
+      onSave(editedValue)
     }
-
-    setIsSaving(true)
-    try {
-      await onSave(editedValue)
-      setIsEditing(false)
-      toast.success('Changes saved successfully')
-    } catch (error) {
-      console.error('Error saving changes:', error)
-      toast.error('Failed to save changes')
-    } finally {
-      setIsSaving(false)
-    }
+    setIsEditing(false)
   }
 
   const handleCancel = () => {
@@ -49,53 +27,40 @@ export function EditableText({
     setIsEditing(false)
   }
 
-  if (!isEditing) {
+  if (isEditing) {
     return (
-      <div
-        className={`cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded ${className}`}
-        onClick={() => !disabled && setIsEditing(true)}
-      >
-        {value || placeholder || 'Click to edit'}
+      <div className="flex flex-col gap-2">
+        {multiline ? (
+          <Textarea
+            value={editedValue}
+            onChange={(e) => setEditedValue(e.target.value)}
+            className={className}
+          />
+        ) : (
+          <Input
+            value={editedValue}
+            onChange={(e) => setEditedValue(e.target.value)}
+            className={className}
+          />
+        )}
+        <div className="flex gap-2">
+          <Button onClick={handleSave} size="sm">
+            Save
+          </Button>
+          <Button onClick={handleCancel} variant="outline" size="sm">
+            Cancel
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-2">
-      {type === 'textarea' ? (
-        <Textarea
-          value={editedValue}
-          onChange={(e) => setEditedValue(e.target.value)}
-          placeholder={placeholder}
-          className={className}
-          disabled={isSaving}
-        />
-      ) : (
-        <Input
-          value={editedValue}
-          onChange={(e) => setEditedValue(e.target.value)}
-          placeholder={placeholder}
-          className={className}
-          disabled={isSaving}
-        />
-      )}
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          onClick={handleSave}
-          disabled={isSaving || editedValue === value}
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleCancel}
-          disabled={isSaving}
-        >
-          Cancel
-        </Button>
-      </div>
+    <div
+      onClick={() => setIsEditing(true)}
+      className={`cursor-pointer hover:bg-gray-800/50 rounded px-2 py-1 ${className}`}
+    >
+      {value}
     </div>
   )
 } 

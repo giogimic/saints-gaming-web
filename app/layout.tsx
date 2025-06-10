@@ -5,7 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/components/auth-provider';
 import { Navbar } from '@/components/navbar';
-import { AdminWidget } from '@/components/admin-widget';
+import { AdminWidget, EditModeProvider } from '@/components/admin-widget';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -29,11 +29,13 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <div className="min-h-screen bg-background">
-              <Navbar />
-              <main className="container mx-auto py-6">{children}</main>
-              <AdminWidget />
-            </div>
+            <EditModeProvider>
+              <div className="min-h-screen bg-background">
+                <Navbar />
+                <main className="container mx-auto py-6">{children}</main>
+                <AdminWidget />
+              </div>
+            </EditModeProvider>
             <Toaster />
           </AuthProvider>
         </ThemeProvider>

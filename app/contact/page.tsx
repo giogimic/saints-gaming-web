@@ -10,6 +10,7 @@ import { UserRole } from "@/lib/permissions";
 import { Loader2, Mail, MessageSquare, Users, Send, Phone, MapPin, Edit2, Save, X, Image as ImageIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEditMode } from "@/components/admin-widget";
+import { EditableText } from "@/app/components/editable-text";
 
 interface EditableContent {
   id: string;
@@ -22,6 +23,7 @@ export default function ContactPage() {
   const isEditMode = useEditMode();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pageId, setPageId] = useState<string | null>(null);
 
   // All editable content
   const [editableContent, setEditableContent] = useState<Record<string, EditableContent>>({
@@ -57,10 +59,19 @@ export default function ContactPage() {
       if (!response.ok) throw new Error("Failed to fetch page content");
       const data = await response.json();
       
-      // Update editable content with fetched data
+      // Store the page ID for updates
+      setPageId(data.id);
+      
+      // Parse the content if it's a string
+      const content = typeof data.content === 'string' ? JSON.parse(data.content) : data.content;
+      
+      // Update editableContent with fetched data
       setEditableContent(prev => ({
         ...prev,
-        welcomeMessage: { ...prev.welcomeMessage, content: data.content },
+        ...Object.entries(content).reduce((acc, [key, value]) => ({
+          ...acc,
+          [key]: { id: key, content: value as string, type: 'text' }
+        }), {})
       }));
     } catch (error) {
       console.error("Error fetching page content:", error);
@@ -74,40 +85,43 @@ export default function ContactPage() {
     }
   };
 
-  const handleContentEdit = (id: string, newContent: string) => {
+  const handleContentEdit = async (id: string, newContent: string) => {
+    if (!pageId) return;
+
+    // Update local state
     setEditableContent(prev => ({
       ...prev,
       [id]: { ...prev[id], content: newContent }
     }));
-  };
 
-  const handleSaveAll = async () => {
-    setIsSubmitting(true);
+    // Save to database
     try {
       const response = await fetch("/api/pages", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: "contact",
-          content: editableContent,
+          id: pageId,
+          content: {
+            [id]: newContent
+          },
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to update page content");
+      if (!response.ok) {
+        throw new Error("Failed to save changes");
+      }
 
       toast({
         title: "Success",
-        description: "Page content updated successfully",
+        description: "Changes saved successfully",
       });
     } catch (error) {
-      console.error("Error updating page content:", error);
+      console.error("Error saving changes:", error);
       toast({
         title: "Error",
-        description: "Failed to update page content",
+        description: "Failed to save changes",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -155,24 +169,6 @@ export default function ContactPage() {
     );
   }
 
-  const EditableText = ({ id, className = "" }: { id: string; className?: string }) => {
-    const content = editableContent[id];
-    if (!content) return null;
-
-    return isEditMode ? (
-      <div className="relative group">
-        <Input
-          value={content.content}
-          onChange={(e) => handleContentEdit(id, e.target.value)}
-          className={`${className} pr-10`}
-        />
-        <Edit2 className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      </div>
-    ) : (
-      <p className={className}>{content.content}</p>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-muted/50 to-background py-0">
       {/* Hero Section */}
@@ -182,12 +178,12 @@ export default function ContactPage() {
             <Mail className="h-12 w-12 text-white drop-shadow-lg" />
           </div>
           <EditableText
-            id="heroTitle"
-            className="text-5xl font-extrabold tracking-tight mb-2 drop-shadow-lg"
+            value={editableContent.heroTitle.content}
+            onSave={(value) => handleContentEdit('heroTitle', value)}
           />
           <EditableText
-            id="heroSubtitle"
-            className="text-lg font-medium opacity-90 mb-4 max-w-2xl mx-auto"
+            value={editableContent.heroSubtitle.content}
+            onSave={(value) => handleContentEdit('heroSubtitle', value)}
           />
         </div>
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 to-blue-600/40 z-0" />
@@ -198,8 +194,8 @@ export default function ContactPage() {
         <section className="mb-10">
           <Card className="bg-white/90 border-0 shadow-lg rounded-xl p-6">
             <EditableText
-              id="welcomeMessage"
-              className="text-xl font-semibold text-gray-800"
+              value={editableContent.welcomeMessage.content}
+              onSave={(value) => handleContentEdit('welcomeMessage', value)}
             />
           </Card>
         </section>
@@ -211,10 +207,16 @@ export default function ContactPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-blue-800">
                   <Send className="h-6 w-6" />
-                  <EditableText id="formTitle" />
+                  <EditableText
+                    value={editableContent.formTitle.content}
+                    onSave={(value) => handleContentEdit('formTitle', value)}
+                  />
                 </CardTitle>
                 <CardDescription>
-                  <EditableText id="formDescription" />
+                  <EditableText
+                    value={editableContent.formDescription.content}
+                    onSave={(value) => handleContentEdit('formDescription', value)}
+                  />
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -262,19 +264,22 @@ export default function ContactPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, message: e.target.value })
                       }
-                      placeholder="Your message..."
+                      placeholder="Your message here..."
                       required
                       className="min-h-[150px]"
                     />
                   </div>
-                  <Button type="submit" disabled={isSubmitting} className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-2 rounded-lg shadow">
+                  <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Sending...
                       </>
                     ) : (
-                      "Send Message"
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        Send Message
+                      </>
                     )}
                   </Button>
                 </form>
@@ -284,72 +289,78 @@ export default function ContactPage() {
 
           {/* Contact Information */}
           <div className="space-y-6">
-            <Card className="bg-white/95 border-0 shadow-lg rounded-2xl">
+            <Card className="shadow-xl border-0 rounded-2xl bg-white/95">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-blue-800">
-                  <Mail className="h-5 w-5" /> Contact Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-5 w-5 text-blue-700" />
-                  <div>
-                    <p className="font-medium">Email</p>
-                    <EditableText id="email" className="text-sm text-muted-foreground" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <MessageSquare className="h-5 w-5 text-blue-700" />
-                  <div>
-                    <p className="font-medium">Discord</p>
-                    <EditableText id="discord" className="text-sm text-muted-foreground" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-blue-700" />
-                  <div>
-                    <p className="font-medium">Community</p>
-                    <EditableText id="community" className="text-sm text-muted-foreground" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="h-5 w-5 text-blue-700" />
-                  <div>
-                    <p className="font-medium">Phone</p>
-                    <EditableText id="phone" className="text-sm text-muted-foreground" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <MapPin className="h-5 w-5 text-blue-700" />
-                  <div>
-                    <p className="font-medium">Location</p>
-                    <EditableText id="location" className="text-sm text-muted-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/95 border-0 shadow-lg rounded-2xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-800">
-                  <Users className="h-5 w-5" /> Support Hours
+                  <Mail className="h-6 w-6" />
+                  Email
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Monday - Friday</span>
-                    <span>9:00 AM - 5:00 PM EST</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Saturday</span>
-                    <span>10:00 AM - 4:00 PM EST</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Sunday</span>
-                    <span>Closed</span>
-                  </div>
-                </div>
+                <EditableText
+                  value={editableContent.email.content}
+                  onSave={(value) => handleContentEdit('email', value)}
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-xl border-0 rounded-2xl bg-white/95">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-800">
+                  <MessageSquare className="h-6 w-6" />
+                  Discord
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EditableText
+                  value={editableContent.discord.content}
+                  onSave={(value) => handleContentEdit('discord', value)}
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-xl border-0 rounded-2xl bg-white/95">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-800">
+                  <Users className="h-6 w-6" />
+                  Community
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EditableText
+                  value={editableContent.community.content}
+                  onSave={(value) => handleContentEdit('community', value)}
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-xl border-0 rounded-2xl bg-white/95">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-800">
+                  <Phone className="h-6 w-6" />
+                  Phone
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EditableText
+                  value={editableContent.phone.content}
+                  onSave={(value) => handleContentEdit('phone', value)}
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-xl border-0 rounded-2xl bg-white/95">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-800">
+                  <MapPin className="h-6 w-6" />
+                  Location
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EditableText
+                  value={editableContent.location.content}
+                  onSave={(value) => handleContentEdit('location', value)}
+                />
               </CardContent>
             </Card>
           </div>

@@ -17,6 +17,7 @@ dist/
 *.tmp
 *.temp
 *.bak
+*.db
 
 # === Test and Coverage ===
 coverage/

@@ -46,138 +46,309 @@ async function main() {
     });
   }
 
-  // Create a default user (admin) if not exists
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@saintsgaming.com' },
+  // Create system user
+  const systemUser = await prisma.user.upsert({
+    where: { email: 'system@saintsgaming.com' },
     update: {},
     create: {
-      name: 'Admin',
-      email: 'admin@saintsgaming.com',
+      email: 'system@saintsgaming.com',
+      name: 'System',
       role: 'admin',
-      password: 'admin', // In production, use hashed passwords!
     },
   });
 
-  // Create default pages
-  const defaultPages = [
-    {
+  // Minimal home page content
+  const homeContent = {
+    hero: {
+      id: 'hero',
+      type: 'hero',
+      title: 'Welcome to Saints Gaming',
+      subtitle: 'A modern gaming community for everyone',
+      button: 'Join Now',
+    },
+    welcome: {
+      id: 'welcome',
+      type: 'text',
+      content: 'We are glad you are here! Explore our servers and join the fun.'
+    }
+  };
+
+  await prisma.page.upsert({
+    where: { slug: 'home' },
+    update: {
       title: 'Home',
+      content: JSON.stringify(homeContent),
+      isPublished: true,
+      createdById: systemUser.id,
+    },
+    create: {
       slug: 'home',
-      description: 'Welcome to Saints Gaming',
+      title: 'Home',
+      content: JSON.stringify(homeContent),
       isPublished: true,
-      template: 'home',
-      createdById: admin.id,
-      content: 'Welcome to the home page!'
+      createdById: systemUser.id,
     },
-    {
-      title: 'About',
+  });
+
+  console.log('Minimal home page seeded!');
+
+  // Create about page
+  const aboutPage = await prisma.page.upsert({
+    where: { slug: 'about' },
+    update: {},
+    create: {
       slug: 'about',
-      description: 'About Saints Gaming',
+      title: 'About Us',
+      description: 'Learn about Saints Gaming, our mission, vision, and the team behind your favorite gaming community.',
+      content: JSON.stringify({
+        title: { id: 'title', type: 'text', content: 'About Saints Gaming' },
+        description: { id: 'description', type: 'text', content: 'Welcome to Saints Gaming, your ultimate destination for ARK and Minecraft gaming experiences.' },
+        mission: { id: 'mission', type: 'text', content: 'Our mission is to provide the best gaming experience with high-performance servers and a friendly community.' },
+        vision: { id: 'vision', type: 'text', content: 'We envision a gaming community where players can enjoy their favorite games in a safe and welcoming environment.' },
+        teamTitle: { id: 'teamTitle', type: 'text', content: 'Our Team' },
+        teamDesc: { id: 'teamDesc', type: 'text', content: 'Meet the dedicated team behind Saints Gaming.' },
+        member1Name: { id: 'member1Name', type: 'text', content: 'John Doe' },
+        member1Role: { id: 'member1Role', type: 'text', content: 'Founder & Lead Developer' },
+        member1Desc: { id: 'member1Desc', type: 'text', content: 'Passionate about gaming and community building.' },
+        member2Name: { id: 'member2Name', type: 'text', content: 'Jane Smith' },
+        member2Role: { id: 'member2Role', type: 'text', content: 'Community Manager' },
+        member2Desc: { id: 'member2Desc', type: 'text', content: 'Dedicated to creating an amazing community experience.' }
+      }),
       isPublished: true,
+      createdById: systemUser.id,
       template: 'about',
-      createdById: admin.id,
-      content: 'About us content goes here.'
-    },
-    {
-      title: 'Contact',
+      metadata: {
+        seo: {
+          title: 'About Saints Gaming - Our Story and Team',
+          description: 'Learn about Saints Gaming, our mission, vision, and the team behind your favorite gaming community.',
+          keywords: ['about', 'gaming community', 'team', 'mission', 'vision']
+        }
+      }
+    }
+  });
+
+  // Create about page content blocks
+  await prisma.contentBlock.createMany({
+    data: [
+      {
+        type: 'hero',
+        title: 'About Hero',
+        content: {
+          title: 'About Saints Gaming',
+          subtitle: 'Your Ultimate Gaming Community'
+        },
+        order: 1,
+        isPublished: true,
+        createdById: systemUser.id,
+        pageId: aboutPage.id,
+        settings: {
+          backgroundImage: '/images/about-hero.jpg',
+          textColor: '#ffffff'
+        }
+      },
+      {
+        type: 'mission',
+        title: 'Our Mission',
+        content: {
+          title: 'Our Mission',
+          description: 'Our mission is to provide the best gaming experience with high-performance servers and a friendly community.'
+        },
+        order: 2,
+        isPublished: true,
+        createdById: systemUser.id,
+        pageId: aboutPage.id
+      },
+      {
+        type: 'vision',
+        title: 'Our Vision',
+        content: {
+          title: 'Our Vision',
+          description: 'We envision a gaming community where players can enjoy their favorite games in a safe and welcoming environment.'
+        },
+        order: 3,
+        isPublished: true,
+        createdById: systemUser.id,
+        pageId: aboutPage.id
+      },
+      {
+        type: 'team',
+        title: 'Our Team',
+        content: {
+          title: 'Our Team',
+          description: 'Meet the dedicated team behind Saints Gaming.',
+          members: [
+            {
+              name: 'John Doe',
+              role: 'Founder & Lead Developer',
+              description: 'Passionate about gaming and community building.'
+            },
+            {
+              name: 'Jane Smith',
+              role: 'Community Manager',
+              description: 'Dedicated to creating an amazing community experience.'
+            }
+          ]
+        },
+        order: 4,
+        isPublished: true,
+        createdById: systemUser.id,
+        pageId: aboutPage.id
+      }
+    ]
+  });
+
+  // Create contact page
+  const contactPage = await prisma.page.upsert({
+    where: { slug: 'contact' },
+    update: {},
+    create: {
       slug: 'contact',
+      title: 'Contact',
       description: 'Contact Saints Gaming',
+      content: JSON.stringify({
+        heroTitle: { id: 'heroTitle', type: 'text', content: 'Contact Us' },
+        heroSubtitle: { id: 'heroSubtitle', type: 'text', content: 'Get in touch with our team' },
+        contactTitle: { id: 'contactTitle', type: 'text', content: 'Send us a message' },
+        contactDesc: { id: 'contactDesc', type: 'text', content: 'Have questions or feedback? We\'d love to hear from you!' },
+        emailLabel: { id: 'emailLabel', type: 'text', content: 'Email' },
+        emailPlaceholder: { id: 'emailPlaceholder', type: 'text', content: 'Enter your email' },
+        messageLabel: { id: 'messageLabel', type: 'text', content: 'Message' },
+        messagePlaceholder: { id: 'messagePlaceholder', type: 'text', content: 'Enter your message' },
+        submitButton: { id: 'submitButton', type: 'text', content: 'Send Message' }
+      }),
       isPublished: true,
+      createdById: systemUser.id,
       template: 'contact',
-      createdById: admin.id,
-      content: 'Contact information goes here.'
+      metadata: {
+        seo: {
+          title: 'Contact Saints Gaming - Get in Touch',
+          description: 'Contact Saints Gaming for support, feedback, or any questions about our gaming community.',
+          keywords: ['contact', 'support', 'feedback', 'gaming community']
+        }
+      }
     },
-    {
-      title: 'Servers',
-      slug: 'servers',
-      description: 'Our Game Servers',
-      isPublished: true,
-      template: 'servers',
-      createdById: admin.id,
-      content: 'Server information and details.'
-    },
-  ];
+  });
 
-  for (const page of defaultPages) {
-    await prisma.page.upsert({
-      where: { slug: page.slug },
-      update: page,
-      create: page,
-    });
-  }
+  // Create contact page content blocks
+  await prisma.contentBlock.createMany({
+    data: [
+      {
+        type: 'hero',
+        title: 'Contact Hero',
+        content: {
+          title: 'Contact Us',
+          subtitle: 'Get in touch with our team'
+        },
+        order: 1,
+        isPublished: true,
+        createdById: systemUser.id,
+        pageId: contactPage.id,
+        settings: {
+          backgroundImage: '/images/contact-hero.jpg',
+          textColor: '#ffffff'
+        }
+      },
+      {
+        type: 'contact-form',
+        title: 'Contact Form',
+        content: {
+          title: 'Send us a message',
+          description: 'Have questions or feedback? We\'d love to hear from you!',
+          fields: [
+            {
+              type: 'email',
+              label: 'Email',
+              placeholder: 'Enter your email'
+            },
+            {
+              type: 'textarea',
+              label: 'Message',
+              placeholder: 'Enter your message'
+            }
+          ],
+          submitButton: 'Send Message'
+        },
+        order: 2,
+        isPublished: true,
+        createdById: systemUser.id,
+        pageId: contactPage.id
+      }
+    ]
+  });
 
-  // Create initial servers
+  // Initialize server data
   const servers = [
     {
-      id: 'ark-ascended',
-      name: 'ARK: Survival Ascended',
-      description: 'Join our ARK: Survival Ascended server for an epic survival experience!',
-      image: '/saintsgaming-logo.png',
-      status: 'online',
-      players: 24,
-      maxPlayers: 50,
-      version: 'v1.0',
-      ip: 'ark.saintsgaming.com',
-      type: 'ark',
+      name: "ARK: Survival Ascended",
+      description: "Experience the ultimate survival adventure in ARK: Survival Ascended",
+      image: "/saintsgaming-logo.png",
+      status: "online",
+      players: 0,
+      maxPlayers: 70,
+      version: "v1.0",
+      ip: "play.saintsgaming.com",
+      type: "ark",
       features: JSON.stringify([
-        '2x XP and Harvesting',
-        'Custom Dino Spawns',
-        'Active Admin Team',
-        'Regular Events',
-        'Discord Integration',
+        "High-performance server",
+        "Active community",
+        "Regular events",
+        "24/7 support"
       ]),
       rules: JSON.stringify([
-        'No cheating or exploiting',
-        'Be respectful to other players',
-        'No griefing or harassment',
-        'Follow server guidelines',
+        "Be respectful to other players",
+        "No cheating or exploiting",
+        "No griefing or harassment",
+        "Follow server guidelines"
       ]),
-      modpack: undefined,
-      order: 1,
+      metadata: {
+        seo: {
+          title: "ARK: Survival Ascended Server - Saints Gaming",
+          description: "Join our ARK: Survival Ascended server for an epic survival experience with a friendly community.",
+          keywords: ["ARK", "Survival Ascended", "gaming", "server", "community"]
+        }
+      },
+      order: 1
     },
     {
-      id: 'minecraft',
-      name: 'Minecraft',
-      description: 'Explore our Minecraft server with custom modpacks and unique features!',
-      image: '/saintsgaming-icon.png',
-      status: 'online',
-      players: 15,
-      maxPlayers: 30,
-      version: '1.20.1',
-      ip: 'mc.saintsgaming.com',
-      type: 'minecraft',
+      name: "Minecraft Server",
+      description: "Join our vibrant Minecraft community with custom modpacks",
+      image: "/saintsgaming-icon.png",
+      status: "online",
+      players: 0,
+      maxPlayers: 100,
+      version: "1.20.4",
+      ip: "mc.saintsgaming.com",
+      type: "minecraft",
       features: JSON.stringify([
-        'Custom Modpack',
-        'Economy System',
-        'Land Protection',
-        'Player Shops',
-        'Regular Events',
+        "Custom modpack",
+        "Economy system",
+        "Land protection",
+        "Regular events"
       ]),
       rules: JSON.stringify([
-        'No griefing or stealing',
-        'Be respectful to others',
-        'No cheating or exploiting',
-        'Follow server guidelines',
+        "Be respectful to other players",
+        "No griefing or stealing",
+        "No cheating or exploiting",
+        "Follow server guidelines"
       ]),
-      modpack: {
-        name: 'Saints Gaming Modpack',
-        version: '1.0.0',
-        downloadUrl: '/modpacks/saints-gaming.zip',
+      metadata: {
+        seo: {
+          title: "Minecraft Server - Saints Gaming",
+          description: "Join our Minecraft server with custom modpacks and a friendly community.",
+          keywords: ["Minecraft", "server", "modpack", "gaming", "community"]
+        }
       },
-      order: 2,
-    },
+      order: 2
+    }
   ];
 
   for (const server of servers) {
-    const { id, ...updateData } = server;
-    await prisma.server.upsert({
-      where: { id: server.id },
-      update: updateData,
-      create: server,
+    await prisma.server.create({
+      data: server
     });
   }
 
-  console.log('Seed completed successfully');
+  console.log('Database seeded successfully!');
 }
 
 main()

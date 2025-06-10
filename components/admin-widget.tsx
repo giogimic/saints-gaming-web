@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { createContext, useContext, useState, ReactNode } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -19,29 +19,29 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 
-// Create a global state for edit mode
-let globalEditMode = false
-const editModeListeners = new Set<(mode: boolean) => void>()
+const EditModeContext = createContext<{
+  isEditMode: boolean;
+  setEditMode: (mode: boolean) => void;
+}>({
+  isEditMode: false,
+  setEditMode: () => {},
+});
 
-export function setEditMode(mode: boolean) {
-  globalEditMode = mode
-  editModeListeners.forEach(listener => listener(mode))
+export function EditModeProvider({ children }: { children: ReactNode }) {
+  const [isEditMode, setEditMode] = useState(false);
+  return (
+    <EditModeContext.Provider value={{ isEditMode, setEditMode }}>
+      {children}
+    </EditModeContext.Provider>
+  );
 }
 
 export function useEditMode() {
-  const [editMode, setEditMode] = useState(globalEditMode)
+  return useContext(EditModeContext).isEditMode;
+}
 
-  useEffect(() => {
-    const listener = (mode: boolean) => {
-      setEditMode(mode)
-    }
-    editModeListeners.add(listener)
-    return () => {
-      editModeListeners.delete(listener)
-    }
-  }, [])
-
-  return editMode
+export function useSetEditMode() {
+  return useContext(EditModeContext).setEditMode;
 }
 
 export function AdminWidget() {
@@ -49,17 +49,8 @@ export function AdminWidget() {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(globalEditMode)
-
-  useEffect(() => {
-    const listener = (mode: boolean) => {
-      setIsEditMode(mode)
-    }
-    editModeListeners.add(listener)
-    return () => {
-      editModeListeners.delete(listener)
-    }
-  }, [])
+  const isEditMode = useEditMode()
+  const setEditMode = useSetEditMode()
 
   if (!session?.user || ![UserRole.ADMIN, UserRole.MODERATOR].includes(session.user.role)) {
     return null
@@ -89,7 +80,6 @@ export function AdminWidget() {
   ]
 
   const handleEditModeChange = (checked: boolean) => {
-    setIsEditMode(checked)
     setEditMode(checked)
   }
 

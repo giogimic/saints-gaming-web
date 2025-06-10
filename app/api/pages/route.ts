@@ -4,33 +4,33 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 const DEFAULT_HOME_CONTENT = {
-  heroTitle: 'Welcome to Saints Gaming',
-  heroSubtitle: 'Your ultimate gaming community',
-  joinServers: 'Join Our Servers',
-  joinCommunity: 'Join Community',
-  welcomeMessage: 'Welcome to Saints Gaming!',
-  ourServers: 'Our Servers',
-  arkTitle: 'ARK: Survival Ascended',
-  arkDesc: 'Join our ARK: Survival Ascended server for an epic survival experience!',
-  arkStatus: 'Online',
-  arkPlayers: '24/50',
-  arkVersion: 'v1.0',
-  arkIP: 'ark.saintsgaming.com',
-  arkJoin: 'Join Server',
-  mcTitle: 'Minecraft',
-  mcDesc: 'Explore our Minecraft server with custom modpacks and unique features!',
-  mcStatus: 'Online',
-  mcPlayers: '15/30',
-  mcVersion: '1.20.1',
-  mcIP: 'mc.saintsgaming.com',
-  mcJoin: 'Join Server',
-  whyChoose: 'Why Choose Saints Gaming?',
-  feature1Title: 'Active Community',
-  feature1Desc: 'Join our vibrant community of gamers and make new friends!',
-  feature2Title: 'Regular Events',
-  feature2Desc: 'Participate in weekly events and win amazing prizes!',
-  feature3Title: '24/7 Support',
-  feature3Desc: 'Our staff is always here to help you with any issues!',
+  heroTitle: { content: 'Welcome to Saints Gaming' },
+  heroSubtitle: { content: 'Your ultimate gaming community' },
+  joinServers: { content: 'Join Our Servers' },
+  joinCommunity: { content: 'Join Community' },
+  welcomeMessage: { content: 'Welcome to Saints Gaming!' },
+  ourServers: { content: 'Our Servers' },
+  arkTitle: { content: 'ARK: Survival Ascended' },
+  arkDesc: { content: 'Join our ARK: Survival Ascended server for an epic survival experience!' },
+  arkStatus: { content: 'Online' },
+  arkPlayers: { content: '24/50' },
+  arkVersion: { content: 'v1.0' },
+  arkIP: { content: 'ark.saintsgaming.com' },
+  arkJoin: { content: 'Join Server' },
+  mcTitle: { content: 'Minecraft' },
+  mcDesc: { content: 'Explore our Minecraft server with custom modpacks and unique features!' },
+  mcStatus: { content: 'Online' },
+  mcPlayers: { content: '15/30' },
+  mcVersion: { content: '1.20.1' },
+  mcIP: { content: 'mc.saintsgaming.com' },
+  mcJoin: { content: 'Join Server' },
+  whyChoose: { content: 'Why Choose Saints Gaming?' },
+  feature1Title: { content: 'Active Community' },
+  feature1Desc: { content: 'Join our vibrant community of gamers and make new friends!' },
+  feature2Title: { content: 'Regular Events' },
+  feature2Desc: { content: 'Participate in weekly events and win amazing prizes!' },
+  feature3Title: { content: '24/7 Support' },
+  feature3Desc: { content: 'Our staff is always here to help you with any issues!' },
 };
 
 export async function GET(request: Request) {
@@ -42,6 +42,7 @@ export async function GET(request: Request) {
     }
 
     let page = await prisma.page.findUnique({ where: { slug } });
+    console.log('Found page:', page);
     
     if (!page) {
       // Get or create a system user for default pages
@@ -54,9 +55,37 @@ export async function GET(request: Request) {
           role: 'admin',
         },
       });
+      console.log('System user:', systemUser);
 
       // Create a default page if it doesn't exist
-      const defaultContent = slug === 'home' ? DEFAULT_HOME_CONTENT : {};
+      const defaultContent = {
+        heroTitle: { id: 'heroTitle', type: 'text', content: "Welcome to Saints Gaming" },
+        heroSubtitle: { id: 'heroSubtitle', type: 'text', content: "Your Ultimate Gaming Community" },
+        heroButton: { id: 'heroButton', type: 'text', content: "Join Now" },
+        arkTitle: { id: 'arkTitle', type: 'text', content: "ARK Server" },
+        arkDesc: { id: 'arkDesc', type: 'text', content: "Experience the ultimate ARK survival adventure" },
+        arkStatus: { id: 'arkStatus', type: 'text', content: "Online" },
+        arkPlayers: { id: 'arkPlayers', type: 'text', content: "0/70" },
+        arkVersion: { id: 'arkVersion', type: 'text', content: "v1.0" },
+        arkIP: { id: 'arkIP', type: 'text', content: "play.saintsgaming.com" },
+        arkJoin: { id: 'arkJoin', type: 'text', content: "Join ARK Server" },
+        mcTitle: { id: 'mcTitle', type: 'text', content: "Minecraft Server" },
+        mcDesc: { id: 'mcDesc', type: 'text', content: "Join our vibrant Minecraft community" },
+        mcStatus: { id: 'mcStatus', type: 'text', content: "Online" },
+        mcPlayers: { id: 'mcPlayers', type: 'text', content: "0/100" },
+        mcVersion: { id: 'mcVersion', type: 'text', content: "1.20.4" },
+        mcIP: { id: 'mcIP', type: 'text', content: "mc.saintsgaming.com" },
+        mcJoin: { id: 'mcJoin', type: 'text', content: "Join Minecraft Server" },
+        featuresTitle: { id: 'featuresTitle', type: 'text', content: "Why Choose Us" },
+        featuresDesc: { id: 'featuresDesc', type: 'text', content: "Experience gaming like never before" },
+        feature1: { id: 'feature1', type: 'text', content: "High-performance servers with minimal lag" },
+        feature2: { id: 'feature2', type: 'text', content: "Active and friendly community" },
+        feature3: { id: 'feature3', type: 'text', content: "24/7 support and regular updates" },
+        ctaTitle: { id: 'ctaTitle', type: 'text', content: "Ready to Join?" },
+        ctaDesc: { id: 'ctaDesc', type: 'text', content: "Start your adventure today" },
+        ctaButton: { id: 'ctaButton', type: 'text', content: "Get Started" }
+      };
+
       page = await prisma.page.create({
         data: {
           slug,
@@ -66,9 +95,21 @@ export async function GET(request: Request) {
           createdById: systemUser.id,
         },
       });
+      console.log('Created page:', page);
     }
 
-    return NextResponse.json(page);
+    // Parse content if it's a string
+    let content = page.content;
+    if (typeof content === 'string') {
+      try {
+        content = JSON.parse(content);
+      } catch (error) {
+        console.error('Error parsing content:', error);
+        content = {};
+      }
+    }
+
+    return NextResponse.json({ ...page, content });
   } catch (error) {
     console.error("[PAGES_GET]", error);
     return new NextResponse("Internal error", { status: 500 });
@@ -113,15 +154,17 @@ export async function PATCH(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const slug = searchParams.get('slug');
     const body = await request.json();
-    const { id, content } = body;
+    const { content } = body;
 
-    if (!id || !content) {
+    if (!content || !slug) {
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
     const updatedPage = await prisma.page.update({
-      where: { id },
+      where: { slug },
       data: {
         content: typeof content === 'string' ? content : JSON.stringify(content),
         updatedAt: new Date(),
