@@ -25,13 +25,6 @@ async function main() {
       template: 'home',
     },
     {
-      title: 'Events',
-      slug: 'events',
-      description: 'Upcoming gaming events and tournaments',
-      isPublished: true,
-      template: 'events',
-    },
-    {
       title: 'Servers',
       slug: 'servers',
       description: 'Our gaming servers and communities',
@@ -39,11 +32,53 @@ async function main() {
       template: 'servers',
     },
     {
+      title: 'Modpacks',
+      slug: 'modpacks',
+      description: 'Our custom modpacks for various games',
+      isPublished: true,
+      template: 'modpacks',
+    },
+    {
+      title: 'Community',
+      slug: 'community',
+      description: 'Join our gaming community',
+      isPublished: true,
+      template: 'community',
+    },
+    {
+      title: 'Games',
+      slug: 'games',
+      description: 'Games we play and support',
+      isPublished: true,
+      template: 'games',
+    },
+    {
+      title: 'Forum',
+      slug: 'forum',
+      description: 'Community discussions and support',
+      isPublished: true,
+      template: 'forum',
+    },
+    {
       title: 'About',
       slug: 'about',
       description: 'About Saints Gaming',
       isPublished: true,
       template: 'about',
+    },
+    {
+      title: 'Terms of Service',
+      slug: 'terms',
+      description: 'Terms of Service and Community Guidelines',
+      isPublished: true,
+      template: 'legal',
+    },
+    {
+      title: 'Privacy Policy',
+      slug: 'privacy',
+      description: 'Privacy Policy and Data Protection',
+      isPublished: true,
+      template: 'legal',
     },
   ]
 

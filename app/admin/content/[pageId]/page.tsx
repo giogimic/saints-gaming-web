@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/auth-config";
 import prisma from "@/lib/prisma";
 import { AdminContentManager } from "@/components/admin-content-manager";
 import { hasPermission } from "@/lib/permissions";

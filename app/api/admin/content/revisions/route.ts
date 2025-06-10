@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { prisma } from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
+import { authOptions } from '@/lib/auth-config';
+import prisma from '@/lib/prisma';
 import { UserRole } from '@/lib/permissions';
 
 // Helper to check admin/mod
