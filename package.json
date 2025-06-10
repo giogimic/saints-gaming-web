@@ -12,12 +12,18 @@
     "format": "prettier --write .",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "prisma:seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
+    "db:generate": "drizzle-kit generate:pg",
+    "db:push": "drizzle-kit push:pg",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
+    "@auth/drizzle-adapter": "^1.9.1",
     "@auth/prisma-adapter": "latest",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.1.1",
+    "@neondatabase/serverless": "^1.0.1",
     "@next-auth/prisma-adapter": "latest",
     "@prisma/client": "latest",
     "@radix-ui/react-alert-dialog": "latest",
@@ -52,6 +58,7 @@
     "clsx": "latest",
     "cmdk": "latest",
     "date-fns": "latest",
+    "drizzle-orm": "^0.44.2",
     "framer-motion": "latest",
     "lucide-react": "latest",
     "md5": "latest",
@@ -61,6 +68,7 @@
     "next-themes": "latest",
     "postcss": "latest",
     "postcss-import": "latest",
+    "postgres": "^3.4.7",
     "prisma": "latest",
     "prosemirror-state": "latest",
     "prosemirror-view": "latest",
@@ -79,13 +87,17 @@
   },
   "devDependencies": {
     "@types/node": "latest",
+    "@types/pg": "^8.15.4",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@types/uuid": "latest",
+    "dotenv": "^16.5.0",
+    "drizzle-kit": "^0.31.1",
     "eslint": "latest",
     "eslint-config-next": "15.3.3",
     "prettier": "latest",
     "ts-node": "latest",
+    "tsx": "^4.19.4",
     "typescript": "latest"
   },
   "trustedDependencies": [

@@ -22,6 +22,10 @@ export function MainNav() {
       label: 'Home',
     },
     {
+      href: '/news',
+      label: 'News',
+    },
+    {
       href: '/games',
       label: 'Games',
     },

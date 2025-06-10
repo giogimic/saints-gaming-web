@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -14,13 +14,38 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Edit2,
 } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+
+// Create a global state for edit mode
+let globalEditMode = false
+const editModeListeners = new Set<(mode: boolean) => void>()
+
+export function setEditMode(mode: boolean) {
+  globalEditMode = mode
+  editModeListeners.forEach(listener => listener(mode))
+}
+
+export function useEditMode() {
+  const [editMode, setEditMode] = useState(globalEditMode)
+
+  useEffect(() => {
+    const listener = (mode: boolean) => setEditMode(mode)
+    editModeListeners.add(listener)
+    return () => editModeListeners.delete(listener)
+  }, [])
+
+  return editMode
+}
 
 export function AdminWidget() {
   const { data: session } = useSession()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
 
   if (!session?.user || session.user.role !== UserRole.ADMIN) {
     return null
@@ -48,6 +73,11 @@ export function AdminWidget() {
       href: "/admin/forum",
     },
   ]
+
+  const handleEditModeChange = (checked: boolean) => {
+    setIsEditMode(checked)
+    setEditMode(checked)
+  }
 
   return (
     <div
@@ -87,18 +117,31 @@ export function AdminWidget() {
             </div>
             
             {!isMinimized && (
-              <div className="space-y-2">
-                {menuItems.map((item) => (
-                  <Button
-                    key={item.href}
-                    variant="ghost"
-                    className="w-full justify-start"
-                    onClick={() => router.push(item.href)}
-                  >
-                    <item.icon className="mr-2 h-4 w-4" />
-                    {item.label}
-                  </Button>
-                ))}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 border-b pb-4">
+                  <Switch
+                    checked={isEditMode}
+                    onCheckedChange={handleEditModeChange}
+                    id="edit-mode"
+                  />
+                  <Label htmlFor="edit-mode" className="flex items-center gap-2">
+                    <Edit2 className="h-4 w-4" />
+                    Edit Mode
+                  </Label>
+                </div>
+                <div className="space-y-2">
+                  {menuItems.map((item) => (
+                    <Button
+                      key={item.href}
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => router.push(item.href)}
+                    >
+                      <item.icon className="mr-2 h-4 w-4" />
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

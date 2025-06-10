@@ -1,46 +1,39 @@
-import { NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
-import type { NextRequest } from 'next/server';
+import { withAuth } from "next-auth/middleware";
+import { NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request });
-  const isAuthPage = request.nextUrl.pathname.startsWith('/auth');
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api');
-  const isPublicRoute = request.nextUrl.pathname === '/' || 
-                       request.nextUrl.pathname.startsWith('/_next') ||
-                       request.nextUrl.pathname.startsWith('/static');
+export default withAuth(
+  function middleware(req) {
+    const token = req.nextauth.token;
+    const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
+    const isApiRoute = req.nextUrl.pathname.startsWith("/api");
 
-  // Allow public routes and API routes
-  if (isPublicRoute || isApiRoute) {
+    // Check if user is trying to access admin routes
+    if (isAdminRoute || isApiRoute) {
+      if (!token || !["admin", "moderator"].includes(token.role as string)) {
+        return new NextResponse(
+          JSON.stringify({ error: "Unauthorized" }),
+          {
+            status: 401,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+    }
+
     return NextResponse.next();
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token,
+    },
   }
-
-  // Redirect authenticated users away from auth pages
-  if (isAuthPage && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  // Protect dashboard and admin routes
-  if ((request.nextUrl.pathname.startsWith('/dashboard') || 
-       request.nextUrl.pathname.startsWith('/admin')) && 
-      !token) {
-    const signInUrl = new URL('/auth/signin', request.url);
-    signInUrl.searchParams.set('callbackUrl', request.url);
-    return NextResponse.redirect(signInUrl);
-  }
-
-  return NextResponse.next();
-}
+);
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    "/admin/:path*",
+    "/api/:path*",
   ],
 }; 

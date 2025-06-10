@@ -3,14 +3,14 @@ import prisma from '@/lib/prisma';
 export enum UserRole {
   ADMIN = "admin",
   MODERATOR = "moderator",
-  MEMBER = "member",
+  USER = "user",
 }
 
 // Define the role hierarchy (higher number = higher authority)
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
   [UserRole.ADMIN]: 3,
   [UserRole.MODERATOR]: 2,
-  [UserRole.MEMBER]: 1,
+  [UserRole.USER]: 1,
 };
 
 // Define permissions for each role
@@ -46,7 +46,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'delete:comments',
     'manage:content',
   ],
-  [UserRole.MEMBER]: [
+  [UserRole.USER]: [
     'view:forum',
     'create:post',
     'edit:own-post',
@@ -75,14 +75,16 @@ export type Permission =
 /**
  * Check if a user role has a specific permission
  */
-export function hasPermission(userRole: UserRole, permission: Permission): boolean {
-  if (!userRole || !permission) return false;
+export function hasPermission(userRole: string | undefined, requiredRole: UserRole): boolean {
+  if (!userRole) return false;
 
-  // Admin has all permissions
-  if (userRole === UserRole.ADMIN) return true;
+  const roleHierarchy = {
+    [UserRole.ADMIN]: 3,
+    [UserRole.MODERATOR]: 2,
+    [UserRole.USER]: 1,
+  };
 
-  // Check if the permission is in the role's permissions
-  return ROLE_PERMISSIONS[userRole]?.includes(permission) || false;
+  return roleHierarchy[userRole as UserRole] >= roleHierarchy[requiredRole];
 }
 
 /**
@@ -190,4 +192,16 @@ export const PERMISSIONS: Record<Permission, string> = {
   'edit:comments': 'Edit any comment',
   'delete:comments': 'Delete any comment',
   'manage:content': 'Manage all content',
+};
+
+export const canEditContent = (userRole: string | undefined): boolean => {
+  return hasPermission(userRole, UserRole.MODERATOR);
+};
+
+export const canManageUsers = (userRole: string | undefined): boolean => {
+  return hasPermission(userRole, UserRole.ADMIN);
+};
+
+export const canManageSettings = (userRole: string | undefined): boolean => {
+  return hasPermission(userRole, UserRole.ADMIN);
 }; 

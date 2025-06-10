@@ -57,6 +57,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { ContentBlock } from "@/types/content";
+import { RichTextToolbar } from "@/components/rich-text-toolbar";
 
 interface BlockEditorProps {
   block: ContentBlock;
@@ -98,6 +99,12 @@ export function BlockEditor({ block, onSave }: BlockEditorProps) {
       order: block.order,
     });
   };
+
+  const editor = useEditor({
+    extensions: [StarterKit, Image, Link, TextAlign],
+    content,
+    onUpdate: ({ editor }) => setContent(editor.getHTML()),
+  });
 
   const renderBlockEditor = () => {
     switch (block.type) {
@@ -290,14 +297,8 @@ export function BlockEditor({ block, onSave }: BlockEditorProps) {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Content</Label>
-              <EditorContent
-                editor={useEditor({
-                  extensions: [StarterKit, Image, Link, TextAlign],
-                  content,
-                  onUpdate: ({ editor }) => setContent(editor.getHTML()),
-                })}
-                className="prose max-w-none"
-              />
+              {editor && <RichTextToolbar editor={editor} />}
+              <EditorContent editor={editor} className="prose max-w-none border rounded-md p-2 min-h-[120px]" />
             </div>
           </div>
         );

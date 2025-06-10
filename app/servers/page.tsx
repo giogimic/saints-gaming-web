@@ -1,99 +1,249 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Server, Users, Settings } from "lucide-react";
+"use client";
 
-const servers = [
-  {
-    title: "Minecraft Server",
-    game: "Minecraft",
-    description: "Our public Minecraft server is configured with the Saints Gaming modpack. Players can install the pack via CurseForge to ensure everyone has the same mods and versions.",
-    instructions: "To join, install the Saints Gaming modpack from CurseForge and use the server IP provided in our community.",
-    maxPlayers: 50,
-    mods: "Multiple Modpacks",
-    badges: ["Minecraft", "Modded"],
-  },
-  {
-    title: "Ark: Survival Ascended Server",
-    game: "Ark: Survival Ascended",
-    description: "Our Ark server uses the Omega Ascended mod, a massive overhaul that adds procedurally generated creatures, items, and RPG elements for a richer Ark experience.",
-    instructions: "To join, enable the Omega mod through Ark's mod menu as described on its CurseForge page.",
-    maxPlayers: 70,
-    mods: "Omega",
-    badges: ["ARK: Survival Ascended", "Modded"],
-  },
-];
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Image from "next/image";
+import Link from "next/link";
+
+interface ServerInfo {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  status: "online" | "offline" | "maintenance";
+  players: number;
+  maxPlayers: number;
+  version: string;
+  ip: string;
+  type: "ark" | "minecraft";
+  features: string[];
+  rules: string[];
+  modpack?: {
+    name: string;
+    version: string;
+    downloadUrl: string;
+  };
+}
 
 export default function ServersPage() {
+  const [activeTab, setActiveTab] = useState("ark");
+
+  const servers: ServerInfo[] = [
+    {
+      id: "ark-ascended",
+      name: "ARK: Survival Ascended",
+      description: "Join our ARK: Survival Ascended server for an epic survival experience!",
+      image: "/ark-ascended.jpg",
+      status: "online",
+      players: 24,
+      maxPlayers: 50,
+      version: "v1.0",
+      ip: "ark.saintsgaming.com",
+      type: "ark",
+      features: [
+        "2x XP and Harvesting",
+        "Custom Dino Spawns",
+        "Active Admin Team",
+        "Regular Events",
+        "Discord Integration",
+      ],
+      rules: [
+        "No cheating or exploiting",
+        "Be respectful to other players",
+        "No griefing or harassment",
+        "Follow server guidelines",
+      ],
+    },
+    {
+      id: "minecraft",
+      name: "Minecraft",
+      description: "Explore our Minecraft server with custom modpacks and unique features!",
+      image: "/minecraft.jpg",
+      status: "online",
+      players: 15,
+      maxPlayers: 30,
+      version: "1.20.1",
+      ip: "mc.saintsgaming.com",
+      type: "minecraft",
+      features: [
+        "Custom Modpack",
+        "Economy System",
+        "Land Protection",
+        "Player Shops",
+        "Regular Events",
+      ],
+      rules: [
+        "No griefing or stealing",
+        "Be respectful to others",
+        "No cheating or exploiting",
+        "Follow server guidelines",
+      ],
+      modpack: {
+        name: "Saints Gaming Modpack",
+        version: "1.0.0",
+        downloadUrl: "/modpacks/saints-gaming.zip",
+      },
+    },
+  ];
+
+  const filteredServers = servers.filter((server) => server.type === activeTab);
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-4">Our Servers</h1>
-        <p className="text-xl text-muted-foreground">
-          Join our dedicated gaming servers and play with the community
-        </p>
-      </div>
+    <div className="container mx-auto py-8">
+      <h1 className="text-4xl font-bold mb-8">Our Servers</h1>
 
-      <div className="grid gap-8 md:grid-cols-2">
-        {servers.map((server) => (
-          <Card key={server.title}>
-            <CardHeader>
-              <div className="flex items-center gap-2 mb-2">
-                <Server className="w-6 h-6" />
-                {server.badges.map((badge) => (
-                  <Badge key={badge} variant={badge === server.game ? "default" : "secondary"}>
-                    {badge}
-                  </Badge>
-                ))}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
+        <TabsList>
+          <TabsTrigger value="ark">ARK: Survival Ascended</TabsTrigger>
+          <TabsTrigger value="minecraft">Minecraft</TabsTrigger>
+        </TabsList>
+
+        {filteredServers.map((server) => (
+          <TabsContent key={server.id} value={server.type}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Server Info */}
+              <div className="lg:col-span-2 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle>{server.name}</CardTitle>
+                        <CardDescription>{server.description}</CardDescription>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-3 h-3 rounded-full ${
+                            server.status === "online"
+                              ? "bg-green-500"
+                              : server.status === "maintenance"
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
+                          }`}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {server.status.charAt(0).toUpperCase() + server.status.slice(1)}
+                        </span>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      <div className="relative h-64 rounded-lg overflow-hidden">
+                        <Image
+                          src={server.image}
+                          alt={server.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Players</p>
+                          <p className="text-lg font-medium">
+                            {server.players}/{server.maxPlayers}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Version</p>
+                          <p className="text-lg font-medium">{server.version}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-sm text-muted-foreground">Server IP</p>
+                          <p className="text-lg font-medium">{server.ip}</p>
+                        </div>
+                      </div>
+                      <Button className="w-full" asChild>
+                        <Link href={`/servers/${server.id}`}>Join Server</Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Features */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Server Features</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="list-disc list-inside space-y-2">
+                      {server.features.map((feature, index) => (
+                        <li key={index} className="text-muted-foreground">
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                {/* Rules */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Server Rules</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="list-disc list-inside space-y-2">
+                      {server.rules.map((rule, index) => (
+                        <li key={index} className="text-muted-foreground">
+                          {rule}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
               </div>
-              <CardTitle>{server.title}</CardTitle>
-              <CardDescription>{server.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span className="text-sm">Max Players: {server.maxPlayers}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
-                  <span className="text-sm">Mod: {server.mods}</span>
-                </div>
-                <div className="rounded-md bg-muted p-4">
-                  <h3 className="font-medium">How to Join</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {server.instructions}
-                  </p>
-                </div>
+
+              {/* Sidebar */}
+              <div className="space-y-6">
+                {/* Modpack Info (Minecraft only) */}
+                {server.type === "minecraft" && server.modpack && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Modpack Information</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Name</p>
+                          <p className="font-medium">{server.modpack.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Version</p>
+                          <p className="font-medium">{server.modpack.version}</p>
+                        </div>
+                        <Button className="w-full" asChild>
+                          <Link href={server.modpack.downloadUrl}>Download Modpack</Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Quick Links */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Quick Links</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link href="/forum">Server Forum</Link>
+                      </Button>
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link href="/community">Discord Community</Link>
+                      </Button>
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link href="/support">Get Support</Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-            <CardFooter className="flex gap-4">
-              <Button asChild variant="outline" className="flex-1">
-                <a href="discord://discord.com/channels/your-server-id" target="_blank" rel="noopener noreferrer">
-                  Join Discord
-                </a>
-              </Button>
-              <Button asChild className="flex-1">
-                <a href={`/games/${server.game.toLowerCase().replace(/\s+/g, '-')}`} target="_blank" rel="noopener noreferrer">
-                  Server Information
-                </a>
-              </Button>
-            </CardFooter>
-          </Card>
+            </div>
+          </TabsContent>
         ))}
-      </div>
-
-      <div className="mt-12 text-center">
-        <h2 className="text-2xl font-bold mb-4">Need Help?</h2>
-        <p className="text-muted-foreground mb-6">
-          Join our Discord community for server status updates, support, and to connect with other players
-        </p>
-        <Button asChild size="lg">
-          <a href="discord://discord.com/channels/your-server-id" target="_blank" rel="noopener noreferrer">
-            Join Our Discord
-          </a>
-        </Button>
-      </div>
+      </Tabs>
     </div>
   );
 } 
