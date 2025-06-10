@@ -4,6 +4,15 @@ import { authOptions } from "@/lib/auth-config";
 import prisma from "@/lib/prisma";
 import { AdminContentManager } from "@/components/admin-content-manager";
 import { hasPermission } from "@/lib/permissions";
+import { Button } from "@/components/ui/button";
+import { Eye } from "lucide-react";
+import Link from "next/link";
+
+interface PageProps {
+  params: {
+    pageId: string;
+  };
+}
 
 interface BlockSettings {
   imageUrl?: string;
@@ -33,17 +42,11 @@ interface ContentBlock {
   pageId: string;
 }
 
-interface PageProps {
-  params: {
-    pageId: string;
-  };
-}
-
 export default async function Page({ params }: PageProps) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user || !hasPermission(session.user.role, "manage:content")) {
-    redirect("/");
+    redirect("/auth/signin");
   }
 
   const page = await prisma.page.findUnique({
@@ -82,25 +85,23 @@ export default async function Page({ params }: PageProps) {
 
       // Create new blocks
       await prisma.contentBlock.createMany({
-        data: blocks.map((block) => ({
+        data: blocks.map((block, index) => ({
           id: block.id,
           type: block.type,
           content: block.content,
-          settings: block.settings as any, // Convert to JSON value
+          settings: JSON.stringify(block.settings),
           title: block.title,
-          order: block.order,
+          order: index,
           isPublished: block.isPublished,
           pageId: params.pageId,
           createdById: session.user.id,
         })),
       });
 
-      // Update page metadata
+      // Update page
       await prisma.page.update({
         where: { id: params.pageId },
-        data: {
-          updatedAt: new Date(),
-        },
+        data: { updatedAt: new Date() },
       });
     } catch (error) {
       console.error("Error saving blocks:", error);
@@ -110,11 +111,19 @@ export default async function Page({ params }: PageProps) {
 
   return (
     <div className="container mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">{page.title}</h1>
-        <p className="text-muted-foreground">
-          Last updated: {new Date(page.updatedAt).toLocaleDateString()}
-        </p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">{page.title}</h1>
+          <p className="text-muted-foreground">
+            Last updated: {new Date(page.updatedAt).toLocaleDateString()}
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href={`/${page.slug}`}>
+            <Eye className="h-4 w-4 mr-2" />
+            View Page
+          </Link>
+        </Button>
       </div>
 
       <AdminContentManager

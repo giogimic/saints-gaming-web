@@ -2,7 +2,7 @@ export interface BlockSettings {
   imageUrl?: string;
   alt?: string;
   videoUrl?: string;
-  videoType?: 'youtube' | 'vimeo' | 'direct';
+  videoType?: "youtube" | "vimeo" | "custom";
   buttonText?: string;
   buttonUrl?: string;
   columns?: number;
@@ -21,4 +21,12 @@ export interface BlockSettings {
   opacity?: number;
   animation?: string;
   customClass?: string;
+  altText?: string;
+  buttonType?: "primary" | "secondary" | "outline" | "ghost";
+  gap?: string;
+  embedUrl?: string;
+  embedType?: "iframe" | "script" | "custom";
+  fileUrl?: string;
+  fileName?: string;
+  fileType?: "document" | "image" | "video" | "audio" | "other";
 } 

@@ -1,14 +1,19 @@
 "use client"
 
 import { useState } from "react"
-import { AdminHeader } from "@/components/admin/admin-header"
-import { AdminSidebar } from "@/components/admin/admin-sidebar"
-import { AdminToolbar } from "@/components/admin/admin-toolbar"
-import { User } from "@prisma/client"
+import { AdminSidebar } from "./admin-sidebar"
+import { AdminHeader } from "./admin-header"
+import { cn } from "@/lib/utils"
 
 interface AdminLayoutProps {
   children: React.ReactNode
-  user: Pick<User, "id" | "name" | "email" | "image" | "role">
+  user: {
+    id: string
+    name: string | null
+    role: string
+    image: string | null
+    email: string | null
+  }
 }
 
 export function AdminLayoutClient({ children, user }: AdminLayoutProps) {
@@ -16,20 +21,24 @@ export function AdminLayoutClient({ children, user }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <AdminHeader 
-        user={user} 
-        isSidebarOpen={isSidebarOpen} 
-        onSidebarToggle={() => setIsSidebarOpen(!isSidebarOpen)} 
+      <AdminHeader
+        user={user}
+        isSidebarOpen={isSidebarOpen}
+        onSidebarToggle={() => setIsSidebarOpen(!isSidebarOpen)}
       />
-      <div className="flex">
-        <AdminSidebar isOpen={isSidebarOpen} />
-        <main className="flex-1 md:pl-64 pt-16">
-          <div className="container mx-auto py-8">
-            <AdminToolbar user={user} />
+      <AdminSidebar isOpen={isSidebarOpen} />
+      <main
+        className={cn(
+          "min-h-screen pt-16 transition-all duration-300",
+          isSidebarOpen ? "md:pl-64" : "md:pl-0"
+        )}
+      >
+        <div className="container mx-auto p-4">
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
             {children}
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   )
 } 
