@@ -10,11 +10,12 @@ import { Plus, Settings, Edit2, Trash2, GripVertical } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useEditMode } from "@/components/admin-widget";
-import { toast } from "sonner";
+import { useEditMode } from '@/app/contexts/EditModeContext';
+import { toast } from "@/components/ui/use-toast";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EditableText } from "@/app/components/editable-text";
+import { EditableText } from "@/components/editable-text";
+import { Loader2 } from "lucide-react";
 
 interface Category {
   id: string;
@@ -27,15 +28,50 @@ interface Category {
   };
 }
 
+interface Thread {
+  id: string;
+  title: string;
+  content: string;
+  author: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  categoryId: string;
+  isPinned: boolean;
+  isLocked: boolean;
+  views: number;
+  posts: {
+    id: string;
+  }[];
+}
+
+interface Activity {
+  id: string;
+  type: string;
+  content: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+}
+
 export default function ForumPage() {
   const { data: session } = useSession();
-  const isEditMode = useEditMode();
+  const { canEdit, isEditMode } = useEditMode();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
 
   useEffect(() => {
     fetchCategories();
+    fetchData();
   }, []);
 
   const fetchCategories = async () => {
@@ -49,6 +85,34 @@ export default function ForumPage() {
     } catch (err) {
       console.error('Error fetching categories:', err);
       setError(err instanceof Error ? err.message : 'Failed to load categories');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [threadsRes, activityRes] = await Promise.all([
+        fetch('/api/forum/threads'),
+        fetch('/api/activity')
+      ]);
+
+      if (!threadsRes.ok || !activityRes.ok) {
+        throw new Error('Failed to fetch data');
+      }
+
+      const [threadsData, activityData] = await Promise.all([
+        threadsRes.json(),
+        activityRes.json()
+      ]);
+
+      setThreads(threadsData);
+      setRecentActivity(activityData);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load forum data. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -72,10 +136,10 @@ export default function ForumPage() {
       setCategories(categories.map(cat => 
         cat.id === updatedCategory.id ? updatedCategory : cat
       ));
-      toast('Category updated successfully');
+      toast({ title: 'Success', description: 'Category updated successfully' });
     } catch (err) {
       console.error('Error updating category:', err);
-      toast('Failed to update category', { style: { color: 'red' } });
+      toast({ title: 'Error', description: 'Failed to update category', variant: 'destructive' });
     }
   };
 
@@ -90,10 +154,10 @@ export default function ForumPage() {
       }
 
       setCategories(categories.filter(cat => cat.id !== id));
-      toast('Category deleted successfully');
+      toast({ title: 'Success', description: 'Category deleted successfully' });
     } catch (err) {
       console.error('Error deleting category:', err);
-      toast('Failed to delete category', { style: { color: 'red' } });
+      toast({ title: 'Error', description: 'Failed to delete category', variant: 'destructive' });
     }
   };
 
@@ -115,10 +179,10 @@ export default function ForumPage() {
 
       const newCategory = await response.json();
       setCategories([...categories, newCategory]);
-      toast('Category created successfully');
+      toast({ title: 'Success', description: 'Category created successfully' });
     } catch (err) {
       console.error('Error creating category:', err);
-      toast('Failed to create category', { style: { color: 'red' } });
+      toast({ title: 'Error', description: 'Failed to create category', variant: 'destructive' });
     }
   };
 
@@ -150,35 +214,60 @@ export default function ForumPage() {
       }
     } catch (err) {
       console.error('Error updating category order:', err);
-      toast('Failed to update category order', { style: { color: 'red' } });
+      toast({ title: 'Error', description: 'Failed to update category order', variant: 'destructive' });
       // Revert to original order on error
       fetchCategories();
     }
   };
 
   if (loading) {
-    return (
-      <div className="container mx-auto p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+  return (
+      <div className="min-h-screen bg-[#272727] text-white">
+        <div className="container mx-auto py-8 px-4">
+          <h1 className="font-heading text-3xl font-bold mb-6 text-[#50C878]">Forum</h1>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 space-y-6">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="card-base animate-pulse">
+                  <CardHeader className="card-header">
+                    <div className="h-6 loading-pulse rounded w-3/4"></div>
+                  </CardHeader>
+                  <CardContent className="card-content">
+                    <div className="h-4 loading-pulse rounded w-full mb-4"></div>
+                    <div className="h-4 loading-pulse rounded w-2/3"></div>
+                  </CardContent>
+                </Card>
+              ))}
       </div>
+            <div className="space-y-6">
+              <Card className="card-base animate-pulse">
+                <CardHeader className="card-header">
+                  <div className="h-6 loading-pulse rounded w-1/2"></div>
+                </CardHeader>
+                <CardContent className="card-content">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-4 loading-pulse rounded w-full mb-4"></div>
+                  ))}
+                </CardContent>
+              </Card>
+                  </div>
+                  </div>
+                </div>
+              </div>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto p-4">
-        <p className="text-red-500">{error}</p>
+      <div className="min-h-screen bg-[#272727] text-white">
+        <div className="container mx-auto py-8 px-4">
+          <h1 className="font-heading text-3xl font-bold mb-6 text-[#50C878]">Forum</h1>
+          <Card className="card-base">
+            <CardContent className="card-content">
+              <p className="status-error">{error}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -186,122 +275,59 @@ export default function ForumPage() {
   const canManageCategories = session?.user && hasPermission(session.user.role as UserRole, 'manage:categories' as UserRole);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Forum</h1>
-        <div className="flex gap-2">
-          {canManageCategories && isEditMode && (
-            <Button onClick={handleNewCategory} variant="default">
-              <Plus className="w-4 h-4 mr-1" /> New Category
-            </Button>
-          )}
-          {canManageCategories && (
-            <Link href="/admin/categories">
-              <Button variant="outline">
-                <Settings className="w-4 h-4 mr-1" /> Manage Categories
-              </Button>
-            </Link>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold">Forum Categories</h1>
-            {isEditMode && canManageCategories && (
-              <Button
-                onClick={handleNewCategory}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                New Category
-              </Button>
-            )}
-          </div>
-
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="categories">
-              {(provided) => (
-                <div
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  className="space-y-4"
-                >
-                  {categories.map((category, index) => (
-                    <Draggable
-                      key={category.id}
-                      draggableId={category.id}
-                      index={index}
-                      isDragDisabled={!isEditMode}
-                    >
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          className="relative"
-                        >
-                          <Card className="bg-gray-800 border-gray-700">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                              <div className="flex items-center space-x-2">
-                                {isEditMode && (
-                                  <div
-                                    {...provided.dragHandleProps}
-                                    className="cursor-grab"
-                                  >
-                                    <GripVertical className="h-5 w-5 text-gray-400" />
-                                  </div>
-                                )}
-                                <EditableText
-                                  value={category.name}
-                                  onSave={(value) => handleSave(category.id, { name: value })}
-                                  className="text-xl font-semibold"
-                                  disabled={!isEditMode}
-                                />
-                              </div>
-                              {isEditMode && canManageCategories && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDelete(category.id)}
-                                  className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </CardHeader>
-                            <CardContent>
-                              <EditableText
-                                value={category.description}
-                                onSave={(value) => handleSave(category.id, { description: value })}
-                                className="text-gray-400"
-                                disabled={!isEditMode}
-                              />
-                              <p className="text-sm text-gray-500 mt-2">
-                                {category._count.threads} threads
-                              </p>
-                            </CardContent>
-                          </Card>
-                        </div>
+    <main className={isEditMode ? 'edit-mode' : ''}>
+      <div className="min-h-screen bg-[#272727] text-white">
+        <div className="container mx-auto py-8 px-4">
+          <h1 className="font-heading text-3xl font-bold mb-6 text-[#50C878]">Forum</h1>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 space-y-6">
+              {threads.map((thread) => (
+                <Card key={thread.id} className={`card-base ${isEditMode ? 'edit-mode-hover' : ''}`}>
+                  <CardHeader className="card-header">
+                    <CardTitle className="text-[#50C878]">
+                      {canEdit && isEditMode ? (
+                        <EditableText
+                          value={thread.title}
+                          onSave={async (value) => await handleSave(thread.id, 'title', value)}
+                          className="focus-ring"
+                        />
+                      ) : (
+                        thread.title
                       )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-        </div>
-
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-            <Suspense fallback={<div>Loading recent activity...</div>}>
-              <RecentActivity />
-            </Suspense>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="card-content">
+                    <p className="text-gray-200 mb-4">{thread.content}</p>
+                    <div className="flex justify-between text-sm text-[#9966CC]">
+                      <span>Posted by {thread.author.name}</span>
+                      <span>{new Date(thread.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <div className="space-y-6">
+              <Card className="card-base">
+                <CardHeader className="card-header">
+                  <CardTitle className="text-[#50C878]">Recent Activity</CardTitle>
+                </CardHeader>
+                <CardContent className="card-content">
+                  <div className="space-y-4">
+                    {recentActivity.map((activity) => (
+                      <div key={activity.id} className="border-b border-[#50C878] pb-4">
+                        <p className="text-gray-200">{activity.content}</p>
+                        <p className="text-sm text-[#9966CC] mt-2">
+                          {new Date(activity.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 } 

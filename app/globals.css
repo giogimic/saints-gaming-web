@@ -1,29 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
  
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 142.1 76.2% 36.3%;
-    --primary-foreground: 355.7 100% 97.3%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
+    --background: 0 0% 15%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 168 42% 24%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 150 51% 55%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 280 60% 50%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 142.1 76.2% 36.3%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
     --radius: 0.5rem;
+    --color-bg: #272727;
+    --color-forest: #214F4B;
+    --color-emerald: #50C878;
+    --color-orchid: #9932CC;
+    --color-amethyst: #9966CC;
+    --color-teal: #008080;
+    --color-accent: var(--color-emerald);
+    --color-text: #fff;
+    --color-muted: #b0b0b0;
+    --border-radius: 0.5rem;
+    --shadow: 0 2px 8px rgba(0,0,0,0.15);
+    --font-main: 'Share Tech Mono', monospace;
   }
  
   .dark {
@@ -55,6 +69,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-main);
+    font-size: 16px;
+    min-height: 100vh;
   }
 }
 
@@ -87,4 +106,169 @@
   .saints-footer {
     @apply bg-saints-black border-t border-saints-grey-800;
   }
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-emerald);
+  font-family: var(--font-main);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+a {
+  color: var(--color-orchid);
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+a:hover {
+  color: var(--color-emerald);
+}
+
+button, .btn {
+  background: var(--color-forest);
+  color: var(--color-text);
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.5em 1.25em;
+  font-family: var(--font-main);
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+button:hover, .btn:hover {
+  background: var(--color-emerald);
+  color: var(--color-bg);
+  box-shadow: 0 4px 16px rgba(80,200,120,0.15);
+}
+
+input, textarea, select {
+  background: #222;
+  color: var(--color-text);
+  border: 1px solid var(--color-forest);
+  border-radius: var(--border-radius);
+  padding: 0.5em;
+  font-family: var(--font-main);
+  font-size: 1rem;
+  margin-bottom: 1em;
+}
+
+.card {
+  background: #232323;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: 1.5em;
+  margin-bottom: 1.5em;
+}
+
+.edit-mode {
+  outline: 2px dashed var(--color-orchid);
+  background: rgba(153, 50, 204, 0.08);
+  transition: outline 0.2s, background 0.2s;
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Edit mode transitions */
+.edit-mode-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+.edit-mode-active {
+  @apply border-accent/50 shadow-lg shadow-accent/20;
+}
+
+.edit-mode-hover {
+  @apply hover:ring-2 hover:ring-secondary hover:ring-opacity-30;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-accent/50 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-accent;
+}
+
+/* Focus styles */
+*:focus-visible {
+  @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
+}
+
+/* Selection styles */
+::selection {
+  @apply bg-accent/30 text-accent-foreground;
+}
+
+/* Accent for secondary elements */
+.accent {
+  color: var(--color-amethyst);
+}
+
+/* Utility classes for spacing and layout */
+.mt-2 { margin-top: 0.5rem; }
+.mt-4 { margin-top: 1rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-4 { margin-bottom: 1rem; }
+.p-2 { padding: 0.5rem; }
+.p-4 { padding: 1rem; }
+.rounded { border-radius: var(--border-radius); }
+.shadow { box-shadow: var(--shadow); }
+
+/* Loading States */
+.loading-skeleton {
+  @apply animate-pulse bg-muted;
+}
+
+/* Card Hover Effects */
+.card-hover {
+  @apply transition-all duration-300 hover:shadow-lg hover:shadow-accent/10 hover:-translate-y-1;
+}
+
+/* Button States */
+.button-hover {
+  @apply transition-all duration-200 hover:shadow-md hover:shadow-accent/20 active:scale-95;
+}
+
+/* Input Focus */
+.input-focus {
+  @apply transition-all duration-200 focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background;
+}
+
+/* Toast Animations */
+.toast-enter {
+  animation: slideIn 0.3s ease-out;
+}
+
+.toast-exit {
+  animation: fadeIn 0.3s ease-out reverse;
 } 

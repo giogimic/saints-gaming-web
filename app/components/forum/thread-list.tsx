@@ -1,89 +1,141 @@
-import { MessageSquare, Clock, User, Tag, Pin, Lock } from 'lucide-react';
+"use client";
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, MessageSquare, ThumbsUp, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Thread } from '@prisma/client';
 
-interface ThreadListProps {
-  threads: (Thread & {
-    author: {
-      name: string | null;
-      image: string | null;
-    };
-    _count: {
-      posts: number;
-    };
-  })[];
-  currentPage: number;
-  totalPages: number;
-  categorySlug: string;
-  sortBy?: string;
+interface Thread {
+  id: string;
+  title: string;
+  content: string;
+  author: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  category: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  _count: {
+    posts: number;
+  };
+  views: number;
+  isPinned: boolean;
+  isLocked: boolean;
 }
 
-export function ThreadList({ threads, currentPage, totalPages, categorySlug, sortBy = 'latest' }: ThreadListProps) {
+interface ThreadListProps {
+  categoryId?: string;
+}
+
+export function ThreadList({ categoryId }: ThreadListProps) {
+  const router = useRouter();
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState('newest');
+
+  useEffect(() => {
+    fetchThreads();
+  }, [categoryId, sortBy]);
+
+  const fetchThreads = async () => {
+    try {
+      setLoading(true);
+      const url = categoryId
+        ? `/api/forum/threads?categoryId=${categoryId}&sort=${sortBy}`
+        : `/api/forum/threads?sort=${sortBy}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch threads');
+      }
+      const data = await response.json();
+      setThreads(data);
+    } catch (error) {
+      console.error('Error fetching threads:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <Select defaultValue={sortBy}>
+        <h2 className="text-2xl font-bold">Threads</h2>
+        <div className="flex items-center gap-4">
+          <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="latest">Latest Activity</SelectItem>
-              <SelectItem value="created">Created Date</SelectItem>
-              <SelectItem value="replies">Most Replies</SelectItem>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="oldest">Oldest</SelectItem>
+              <SelectItem value="mostViews">Most Views</SelectItem>
+              <SelectItem value="mostPosts">Most Posts</SelectItem>
             </SelectContent>
           </Select>
+          <Button onClick={() => router.push('/forum/create')}>New Thread</Button>
         </div>
-        <Link href={`/forum/${categorySlug}/new`}>
-          <Button>New Thread</Button>
-        </Link>
       </div>
 
       <div className="space-y-4">
         {threads.map((thread) => (
-          <Link
-            key={thread.id}
-            href={`/forum/thread/${thread.id}`}
-            className="block p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow"
-          >
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {thread.title}
-                </h3>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  Posted by {thread.author.name} • {formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true })}
-                </p>
+          <Card key={thread.id}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>
+                    <Link href={`/forum/thread/${thread.id}`} className="hover:text-[var(--primary)]">
+                      {thread.title}
+                    </Link>
+                  </CardTitle>
+                  <div className="flex items-center gap-4 mt-2 text-sm text-[var(--text-secondary)]">
+                    <span>Posted by {thread.author.name}</span>
+                    <span>•</span>
+                    <span>{formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true })}</span>
+                    <span>•</span>
+                    <span>{thread.views} views</span>
+                    <span>•</span>
+                    <span>{thread._count.posts} {thread._count.posts === 1 ? 'post' : 'posts'}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" className="text-[var(--text-secondary)]">
+                    <ThumbsUp className="h-4 w-4 mr-2" />
+                    Like
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-[var(--text-secondary)]">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                {thread._count.posts} {thread._count.posts === 1 ? 'reply' : 'replies'}
-              </div>
-            </div>
-          </Link>
+            </CardHeader>
+          </Card>
         ))}
-      </div>
 
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-6">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <Link
-              key={page}
-              href={`/forum/${categorySlug}?page=${page}${sortBy ? `&sort=${sortBy}` : ''}`}
-            >
-              <Button
-                variant={currentPage === page ? 'default' : 'outline'}
-                size="sm"
-              >
-                {page}
-              </Button>
-            </Link>
-          ))}
-        </div>
-      )}
+        {!loading && threads.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-[var(--text-secondary)]">No threads found.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 } 

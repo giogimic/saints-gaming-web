@@ -98,103 +98,79 @@ async function main() {
     update: {},
     create: {
       slug: 'about',
-      title: 'About Us',
-      description: 'Learn about Saints Gaming, our mission, vision, and the team behind your favorite gaming community.',
+      title: 'About SaintsGaming',
+      description: 'Learn about SaintsGaming, our mission, servers, modpacks, and join our thriving community.',
       content: JSON.stringify({
-        title: { id: 'title', type: 'text', content: 'About Saints Gaming' },
-        description: { id: 'description', type: 'text', content: 'Welcome to Saints Gaming, your ultimate destination for ARK and Minecraft gaming experiences.' },
-        mission: { id: 'mission', type: 'text', content: 'Our mission is to provide the best gaming experience with high-performance servers and a friendly community.' },
-        vision: { id: 'vision', type: 'text', content: 'We envision a gaming community where players can enjoy their favorite games in a safe and welcoming environment.' },
-        teamTitle: { id: 'teamTitle', type: 'text', content: 'Our Team' },
-        teamDesc: { id: 'teamDesc', type: 'text', content: 'Meet the dedicated team behind Saints Gaming.' },
-        member1Name: { id: 'member1Name', type: 'text', content: 'John Doe' },
-        member1Role: { id: 'member1Role', type: 'text', content: 'Founder & Lead Developer' },
-        member1Desc: { id: 'member1Desc', type: 'text', content: 'Passionate about gaming and community building.' },
-        member2Name: { id: 'member2Name', type: 'text', content: 'Jane Smith' },
-        member2Role: { id: 'member2Role', type: 'text', content: 'Community Manager' },
-        member2Desc: { id: 'member2Desc', type: 'text', content: 'Dedicated to creating an amazing community experience.' }
+        title: "About SaintsGaming",
+        subtitle: "Your Premier Destination for Modded Multiplayer Gaming",
+        sections: [
+          {
+            id: "1",
+            title: "Our Mission",
+            content: "At SaintsGaming, we're dedicated to crafting exceptional modded multiplayer experiences that go beyond the ordinary. Our focus is on creating immersive, stable, and engaging environments where players can enjoy their favorite games with carefully curated mods that enhance gameplay without compromising performance.",
+            features: [
+              "Curated Mod Collections",
+              "Performance-Optimized Servers",
+              "Active Community Management",
+              "Regular Content Updates"
+            ]
+          },
+          {
+            id: "2",
+            title: "Our Servers",
+            content: "Experience gaming at its finest with our premium modded servers. Our ARK: Survival Ascended server features the Omega mod collection, offering an enhanced survival experience with new creatures, items, and mechanics. Our Minecraft server runs the custom SaintsGaming modpack, boasting over 400 carefully selected mods that transform the game into an epic adventure with Cobblemon integration.",
+            features: [
+              "ARK: Survival Ascended — Omega Modded Experience",
+              "Minecraft — 400+ Mods with Cobblemon",
+              "High-Performance Hardware",
+              "Automated Backups",
+              "24/7 Active Moderation"
+            ]
+          },
+          {
+            id: "3",
+            title: "Our Modpacks",
+            content: "Discover our carefully crafted modpacks, each designed for a unique gaming experience. The SaintsGaming Modpack transforms Minecraft into an epic adventure with new dimensions, creatures, and mechanics. Dimensional Cobblemon brings the Pokémon experience to Minecraft with custom regions and features. Holy Crop! revolutionizes Stardew Valley with new crops, mechanics, and automation options.",
+            features: [
+              "SaintsGaming Modpack — Epic Minecraft Adventure",
+              "Dimensional Cobblemon — Pokémon in Minecraft",
+              "Holy Crop! — Stardew Valley Enhanced",
+              "Monthly Content Updates",
+              "CurseForge Integration"
+            ]
+          },
+          {
+            id: "4",
+            title: "Join Our Community",
+            content: "Become part of our thriving gaming community! Our Discord server is the heart of SaintsGaming, where players connect, share experiences, and get instant support. Join us for regular community events, modpack assistance, and stay updated on server maintenance and new features. Your feedback shapes our future updates and improvements.",
+            features: [
+              "Active Discord Community",
+              "Weekly Community Events",
+              "Expert Modpack Support",
+              "Real-time Server Updates",
+              "Community-Driven Development"
+            ]
+          }
+        ]
       }),
       isPublished: true,
       createdById: systemUser.id,
       template: 'about',
       metadata: {
         seo: {
-          title: 'About Saints Gaming - Our Story and Team',
-          description: 'Learn about Saints Gaming, our mission, vision, and the team behind your favorite gaming community.',
-          keywords: ['about', 'gaming community', 'team', 'mission', 'vision']
+          title: 'About SaintsGaming - Your Premier Modded Gaming Community',
+          description: 'Discover SaintsGaming, your premier destination for modded multiplayer gaming. Experience our curated modpacks, high-performance servers, and join our thriving community.',
+          keywords: ['modded gaming', 'multiplayer servers', 'gaming community', 'ARK mods', 'Minecraft modpacks', 'Stardew Valley mods']
         }
       }
     }
   });
 
-  // Create about page content blocks
-  await prisma.contentBlock.createMany({
-    data: [
-      {
-        type: 'hero',
-        title: 'About Hero',
-        content: {
-          title: 'About Saints Gaming',
-          subtitle: 'Your Ultimate Gaming Community'
-        },
-        order: 1,
-        isPublished: true,
-        createdById: systemUser.id,
-        pageId: aboutPage.id,
-        settings: {
-          backgroundImage: '/images/about-hero.jpg',
-          textColor: '#ffffff'
-        }
-      },
-      {
-        type: 'mission',
-        title: 'Our Mission',
-        content: {
-          title: 'Our Mission',
-          description: 'Our mission is to provide the best gaming experience with high-performance servers and a friendly community.'
-        },
-        order: 2,
-        isPublished: true,
-        createdById: systemUser.id,
-        pageId: aboutPage.id
-      },
-      {
-        type: 'vision',
-        title: 'Our Vision',
-        content: {
-          title: 'Our Vision',
-          description: 'We envision a gaming community where players can enjoy their favorite games in a safe and welcoming environment.'
-        },
-        order: 3,
-        isPublished: true,
-        createdById: systemUser.id,
-        pageId: aboutPage.id
-      },
-      {
-        type: 'team',
-        title: 'Our Team',
-        content: {
-          title: 'Our Team',
-          description: 'Meet the dedicated team behind Saints Gaming.',
-          members: [
-            {
-              name: 'John Doe',
-              role: 'Founder & Lead Developer',
-              description: 'Passionate about gaming and community building.'
-            },
-            {
-              name: 'Jane Smith',
-              role: 'Community Manager',
-              description: 'Dedicated to creating an amazing community experience.'
-            }
-          ]
-        },
-        order: 4,
-        isPublished: true,
-        createdById: systemUser.id,
-        pageId: aboutPage.id
-      }
-    ]
+  // Remove the old content blocks since we're using a new structure
+  await prisma.contentBlock.deleteMany({
+    where: {
+      pageId: aboutPage.id
+    }
   });
 
   // Create contact page

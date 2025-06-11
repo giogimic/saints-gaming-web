@@ -1,14 +1,15 @@
+'use client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge, badgeVariants } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
-import { User } from "@prisma/client";
+import { User as PrismaUser } from "@prisma/client";
 import { cn } from "@/lib/utils";
-import { MessageSquare, ThumbsUp } from "lucide-react";
+import { MessageSquare, ThumbsUp, User as UserIcon } from "lucide-react";
 
 interface UserProfileProps {
-  user: User & {
+  user: PrismaUser & {
     threads: Array<{
       id: string;
       title: string;
@@ -69,7 +70,7 @@ export function UserProfile({ user, stats }: UserProfileProps) {
           />
         ) : (
           <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-            <User className="w-8 h-8 text-gray-500 dark:text-gray-400" />
+            <UserIcon className="w-8 h-8 text-gray-500 dark:text-gray-400" />
           </div>
         )}
         <div>

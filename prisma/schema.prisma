@@ -21,20 +21,20 @@ enum UserRole {
 }
 
 model User {
-  id               String             @id @default(cuid())
+  id               String    @id @default(cuid())
   name             String?
-  email            String?            @unique
+  email            String?   @unique
   emailVerified    DateTime?
   image            String?
   password         String?
-  role             UserRole           @default(member)
+  role             UserRole  @default(member)
   bio              String?
-  steamId          String?            @unique
+  steamId          String?   @unique
   discordId        String?
   twitchId         String?
   avatar           String?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   lastLogin        DateTime?
   accounts         Account[]
   sessions         Session[]
@@ -43,6 +43,7 @@ model User {
   posts            Post[]
   comments         Comment[]
   news             News[]
+  newsArticles     NewsArticle[]
   settings         UserSettings?
   gamingProfile    UserGamingProfile?
   pages            Page[]
@@ -222,7 +223,7 @@ model Thread {
   updatedAt   DateTime @updatedAt
   isPinned    Boolean  @default(false)
   isLocked    Boolean  @default(false)
-  viewCount   Int      @default(0)
+  views       Int      @default(0)
   author      User     @relation(fields: [authorId], references: [id])
   category    Category @relation(fields: [categoryId], references: [id])
   posts       Post[]
@@ -264,4 +265,28 @@ model Server {
   order       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model NewsArticle {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  excerpt   String
+  image     String
+  featured  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  category  NewsCategory @relation(fields: [categoryId], references: [id])
+  categoryId String
+}
+
+model NewsCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  articles  NewsArticle[]
 }

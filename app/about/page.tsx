@@ -1,275 +1,290 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
-import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/use-toast";
-import { UserRole } from "@/lib/permissions";
-import { Loader2, Edit2 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import Image from "next/image";
-import Link from "next/link";
-import { useEditMode } from "@/components/admin-widget";
-import { EditableText } from "@/app/components/editable-text";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { EditModeToggle } from "@/components/edit-mode-toggle";
+import { useEditMode } from "@/app/contexts/EditModeContext";
+import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
-interface EditableContent {
+interface Section {
   id: string;
+  title: string;
   content: string;
-  type: 'text' | 'image';
+  features?: string[];
 }
 
+interface AboutContent {
+  title: string;
+  subtitle: string;
+  sections: Section[];
+}
+
+const defaultContent: AboutContent = {
+  title: "About SaintsGaming",
+  subtitle: "Your Premier Destination for Modded Multiplayer Gaming",
+  sections: [
+    {
+      id: "1",
+      title: "Our Mission",
+      content: "At SaintsGaming, we're dedicated to crafting exceptional modded multiplayer experiences that go beyond the ordinary. Our focus is on creating immersive, stable, and engaging environments where players can enjoy their favorite games with carefully curated mods that enhance gameplay without compromising performance.",
+      features: [
+        "Curated Mod Collections",
+        "Performance-Optimized Servers",
+        "Active Community Management",
+        "Regular Content Updates"
+      ]
+    },
+    {
+      id: "2",
+      title: "Our Servers",
+      content: "Experience gaming at its finest with our premium modded servers. Our ARK: Survival Ascended server features the Omega mod collection, offering an enhanced survival experience with new creatures, items, and mechanics. Our Minecraft server runs the custom SaintsGaming modpack, boasting over 400 carefully selected mods that transform the game into an epic adventure with Cobblemon integration.",
+      features: [
+        "ARK: Survival Ascended — Omega Modded Experience",
+        "Minecraft — 400+ Mods with Cobblemon",
+        "High-Performance Hardware",
+        "Automated Backups",
+        "24/7 Active Moderation"
+      ]
+    },
+    {
+      id: "3",
+      title: "Our Modpacks",
+      content: "Discover our carefully crafted modpacks, each designed for a unique gaming experience. The SaintsGaming Modpack transforms Minecraft into an epic adventure with new dimensions, creatures, and mechanics. Dimensional Cobblemon brings the Pokémon experience to Minecraft with custom regions and features. Holy Crop! revolutionizes Stardew Valley with new crops, mechanics, and automation options.",
+      features: [
+        "SaintsGaming Modpack — Epic Minecraft Adventure",
+        "Dimensional Cobblemon — Pokémon in Minecraft",
+        "Holy Crop! — Stardew Valley Enhanced",
+        "Monthly Content Updates",
+        "CurseForge Integration"
+      ]
+    },
+    {
+      id: "4",
+      title: "Join Our Community",
+      content: "Become part of our thriving gaming community! Our Discord server is the heart of SaintsGaming, where players connect, share experiences, and get instant support. Join us for regular community events, modpack assistance, and stay updated on server maintenance and new features. Your feedback shapes our future updates and improvements.",
+      features: [
+        "Active Discord Community",
+        "Weekly Community Events",
+        "Expert Modpack Support",
+        "Real-time Server Updates",
+        "Community-Driven Development"
+      ]
+    }
+  ]
+};
+
+// Helper function to ensure string values
+const ensureString = (value: any): string => {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value !== null) {
+    if ('content' in value) return String(value.content);
+    if ('title' in value) return String(value.title);
+    return JSON.stringify(value);
+  }
+  return String(value);
+};
+
 export default function AboutPage() {
-  const { data: session } = useSession();
-  const isEditMode = useEditMode();
+  const { isEditMode, canEdit } = useEditMode();
+  const { toast } = useToast();
+  const [content, setContent] = useState<AboutContent>(defaultContent);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pageId, setPageId] = useState<string | null>(null);
-
-  // All editable content
-  const [editableContent, setEditableContent] = useState<Record<string, EditableContent>>({
-    heroTitle: { id: 'heroTitle', content: 'About Saints Gaming', type: 'text' },
-    heroSubtitle: { id: 'heroSubtitle', content: 'Your Ultimate Gaming Community', type: 'text' },
-    welcomeMessage: { id: 'welcomeMessage', content: 'Welcome to Saints Gaming, your ultimate gaming community!', type: 'text' },
-    missionTitle: { id: 'missionTitle', content: 'Our Mission', type: 'text' },
-    missionContent: { id: 'missionContent', content: 'To create an inclusive and engaging gaming environment where players can connect, compete, and create lasting friendships.', type: 'text' },
-    serverTitle: { id: 'serverTitle', content: 'Our Servers', type: 'text' },
-    serverDescription: { id: 'serverDescription', content: 'Join our thriving community across multiple game servers:', type: 'text' },
-    arkTitle: { id: 'arkTitle', content: 'ARK: Survival Ascended', type: 'text' },
-    arkDescription: { id: 'arkDescription', content: 'Experience the ultimate survival adventure in our ARK server.', type: 'text' },
-    minecraftTitle: { id: 'minecraftTitle', content: 'Minecraft', type: 'text' },
-    minecraftDescription: { id: 'minecraftDescription', content: 'Build, explore, and survive in our Minecraft world.', type: 'text' },
-  });
-
-  const canEdit = session?.user?.role && [UserRole.ADMIN, UserRole.MODERATOR].includes(session.user.role);
 
   useEffect(() => {
-    fetchPageContent();
+    const loadContent = async () => {
+      try {
+        const response = await fetch('/api/content/about');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.content) {
+            try {
+              const parsedContent = JSON.parse(data.content);
+              // Ensure all fields are strings
+              const safeContent = {
+                title: ensureString(parsedContent.title || defaultContent.title),
+                subtitle: ensureString(parsedContent.subtitle || defaultContent.subtitle),
+                sections: Array.isArray(parsedContent.sections) 
+                  ? parsedContent.sections.map((section: any) => ({
+                      id: ensureString(section.id),
+                      title: ensureString(section.title),
+                      content: ensureString(section.content),
+                      features: Array.isArray(section.features) 
+                        ? section.features.map(ensureString)
+                        : []
+                    }))
+                  : defaultContent.sections
+              };
+              setContent(safeContent);
+            } catch (error) {
+              console.error('Error parsing content:', error);
+              setContent(defaultContent);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading content:', error);
+        setContent(defaultContent);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadContent();
   }, []);
 
-  const fetchPageContent = async () => {
+  const saveContent = async () => {
     try {
-      const response = await fetch("/api/pages?slug=about");
-      if (!response.ok) throw new Error("Failed to fetch page content");
-      const data = await response.json();
-      
-      // Store the page ID for updates
-      setPageId(data.id);
-      
-      // Parse the content if it's a string
-      const content = typeof data.content === 'string' ? JSON.parse(data.content) : data.content;
-      
-      // Update editableContent with fetched data
-      setEditableContent(prev => ({
-        ...prev,
-        ...Object.entries(content).reduce((acc, [key, value]) => ({
-          ...acc,
-          [key]: { id: key, content: value as string, type: 'text' }
-        }), {})
-      }));
-    } catch (error) {
-      console.error("Error fetching page content:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load page content",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleContentEdit = async (id: string, newContent: string) => {
-    if (!pageId) return;
-
-    // Update local state
-    setEditableContent(prev => ({
-      ...prev,
-      [id]: { ...prev[id], content: newContent }
-    }));
-
-    // Save to database
-    try {
-      const response = await fetch("/api/pages", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/content/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          id: pageId,
-          content: {
-            [id]: newContent
-          },
+          pageId: 'about',
+          content: JSON.stringify(content),
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save changes");
+        throw new Error('Failed to save content');
       }
 
       toast({
         title: "Success",
-        description: "Changes saved successfully",
+        description: "Content saved successfully",
       });
     } catch (error) {
-      console.error("Error saving changes:", error);
+      console.error('Error saving content:', error);
       toast({
         title: "Error",
-        description: "Failed to save changes",
+        description: "Failed to save content",
         variant: "destructive",
       });
     }
   };
 
+  const handleSave = (field: keyof AboutContent, value: string) => {
+    setContent((prevContent: AboutContent) => ({
+      ...prevContent,
+      [field]: ensureString(value),
+    }));
+    saveContent();
+  };
+
+  const handleSectionUpdate = (sectionId: string, field: keyof Section, value: string | string[]) => {
+    setContent((prevContent: AboutContent) => ({
+      ...prevContent,
+      sections: prevContent.sections.map((section) =>
+        section.id === sectionId 
+          ? { 
+              ...section, 
+              [field]: Array.isArray(value) 
+                ? value.map(ensureString)
+                : ensureString(value)
+            } 
+          : section
+      ),
+    }));
+    saveContent();
+  };
+
   if (isLoading) {
     return (
-      <div className="container mx-auto p-4 flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-pulse space-y-8">
+          <div className="h-12 bg-gray-200 rounded w-3/4 mb-4"></div>
+          <div className="h-6 bg-gray-200 rounded w-1/2 mb-8"></div>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="space-y-4">
+              <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+              <div className="h-24 bg-gray-200 rounded"></div>
+              <div className="flex gap-2">
+                <div className="h-6 bg-gray-200 rounded w-32"></div>
+                <div className="h-6 bg-gray-200 rounded w-32"></div>
+                <div className="h-6 bg-gray-200 rounded w-32"></div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muted/50 to-background py-0">
-      {/* Hero Section */}
-      <section className="relative w-full bg-gradient-to-r from-blue-900 via-blue-700 to-blue-600 text-white py-16 mb-12 shadow-lg overflow-hidden">
-        <div className="container mx-auto px-4 flex flex-col items-center text-center relative z-10">
-          <EditableText
-            value={editableContent.heroTitle.content}
-            onSave={(value) => handleContentEdit('heroTitle', value)}
-            className="text-5xl font-extrabold tracking-tight mb-2 drop-shadow-lg"
-          />
-          <EditableText
-            value={editableContent.heroSubtitle.content}
-            onSave={(value) => handleContentEdit('heroSubtitle', value)}
-            className="text-xl text-blue-100 mb-8 max-w-2xl"
-          />
+    <div className="container mx-auto px-4 py-8">
+      {canEdit && <EditModeToggle />}
+      
+      <div className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-4xl font-bold">
+              {isEditMode && canEdit ? (
+                <Input
+                  value={ensureString(content.title)}
+                  onChange={(e) => handleSave("title", e.target.value)}
+                  className="text-4xl font-bold"
+                />
+              ) : (
+                ensureString(content.title)
+              )}
+            </CardTitle>
+            <CardDescription className="text-xl mt-2">
+              {isEditMode && canEdit ? (
+                <Input
+                  value={ensureString(content.subtitle)}
+                  onChange={(e) => handleSave("subtitle", e.target.value)}
+                  className="text-xl"
+                />
+              ) : (
+                ensureString(content.subtitle)
+              )}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-6">
+          {content.sections.map((section) => (
+            <Card key={section.id}>
+              <CardHeader>
+                <CardTitle>
+                  {isEditMode && canEdit ? (
+                    <Input
+                      value={ensureString(section.title)}
+                      onChange={(e) => handleSectionUpdate(section.id, "title", e.target.value)}
+                    />
+                  ) : (
+                    ensureString(section.title)
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {isEditMode && canEdit ? (
+                    <Textarea
+                      value={ensureString(section.content)}
+                      onChange={(e) => handleSectionUpdate(section.id, "content", e.target.value)}
+                    />
+                  ) : (
+                    <p className="text-muted-foreground">{ensureString(section.content)}</p>
+                  )}
+                  {section.features && (
+                    <div className="flex flex-wrap gap-2">
+                      {section.features.map((feature, index) => (
+                        <Badge key={index} variant="secondary">
+                          {ensureString(feature)}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 to-blue-600/40 z-0" />
-      </section>
-
-      <div className="container mx-auto px-4 pb-16">
-        {/* Welcome Message */}
-        <section className="mb-10">
-          <Card className="bg-white/90 border-0 shadow-lg rounded-xl p-6">
-            <EditableText
-              value={editableContent.welcomeMessage.content}
-              onSave={(value) => handleContentEdit('welcomeMessage', value)}
-              className="text-xl font-semibold text-gray-800"
-            />
-          </Card>
-        </section>
-
-        {/* Mission Statement */}
-        <section className="mb-12">
-          <Card className="bg-white/90 border-0 shadow-lg rounded-xl p-6">
-            <CardHeader>
-              <CardTitle>
-                <EditableText
-                  value={editableContent.missionTitle.content}
-                  onSave={(value) => handleContentEdit('missionTitle', value)}
-                  className="text-2xl font-bold text-blue-800"
-                />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <EditableText
-                value={editableContent.missionContent.content}
-                onSave={(value) => handleContentEdit('missionContent', value)}
-                className="text-lg text-gray-700"
-              />
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Server Details */}
-        <section className="mb-12">
-          <Card className="bg-white/90 border-0 shadow-lg rounded-xl p-6">
-            <CardHeader>
-              <CardTitle>
-                <EditableText
-                  value={editableContent.serverTitle.content}
-                  onSave={(value) => handleContentEdit('serverTitle', value)}
-                  className="text-2xl font-bold text-blue-800"
-                />
-              </CardTitle>
-              <CardDescription>
-                <EditableText
-                  value={editableContent.serverDescription.content}
-                  onSave={(value) => handleContentEdit('serverDescription', value)}
-                  className="text-lg text-gray-700"
-                />
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* ARK Server */}
-                <Card className="bg-white border border-gray-200 rounded-lg p-4">
-                  <CardHeader>
-                    <CardTitle>
-                      <EditableText
-                        value={editableContent.arkTitle.content}
-                        onSave={(value) => handleContentEdit('arkTitle', value)}
-                        className="text-xl font-semibold text-blue-800"
-                      />
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <EditableText
-                      value={editableContent.arkDescription.content}
-                      onSave={(value) => handleContentEdit('arkDescription', value)}
-                      className="text-gray-700"
-                    />
-                    <Button className="mt-4" asChild>
-                      <Link href="/servers/ark">Learn More</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* Minecraft Server */}
-                <Card className="bg-white border border-gray-200 rounded-lg p-4">
-                  <CardHeader>
-                    <CardTitle>
-                      <EditableText
-                        value={editableContent.minecraftTitle.content}
-                        onSave={(value) => handleContentEdit('minecraftTitle', value)}
-                        className="text-xl font-semibold text-blue-800"
-                      />
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <EditableText
-                      value={editableContent.minecraftDescription.content}
-                      onSave={(value) => handleContentEdit('minecraftDescription', value)}
-                      className="text-gray-700"
-                    />
-                    <Button className="mt-4" asChild>
-                      <Link href="/servers/minecraft">Learn More</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Call to Action */}
-        <section className="text-center">
-          <Card className="bg-gradient-to-r from-blue-600 to-blue-800 text-white border-0 shadow-lg rounded-xl p-8">
-            <CardHeader>
-              <CardTitle className="text-3xl font-bold mb-4">Join Our Community Today!</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg mb-6">Experience the best gaming community with Saints Gaming.</p>
-              <div className="flex justify-center gap-4">
-                <Button size="lg" variant="secondary" asChild>
-                  <Link href="/servers">Join Our Servers</Link>
-                </Button>
-                <Button size="lg" variant="outline" className="bg-white/10 hover:bg-white/20" asChild>
-                  <Link href="/community">Join Community</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
       </div>
     </div>
   );

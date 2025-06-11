@@ -1,19 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Gamepad2, Users, Clock, Trophy, AlertCircle, Edit2, Trash2, Plus } from "lucide-react";
-import { format } from "date-fns";
-import { toast } from "@/components/ui/use-toast";
-import { useSession } from "next-auth/react";
-import { UserRole } from "@/lib/permissions";
-import { useRouter } from "next/navigation";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useEditMode } from "@/components/admin-widget";
+import { useEditMode } from '@/app/contexts/EditModeContext';
+import Image from "next/image";
+import Link from "next/link";
+import { EditableText } from "@/components/editable-text";
 
 interface Event {
   id: string;
@@ -21,367 +17,172 @@ interface Event {
   description: string;
   date: string;
   time: string;
-  participants: number;
-  maxParticipants: number;
-  prize: string;
-  game: string;
-  type: 'Tournament' | 'Contest' | 'Casual' | 'Other';
-  status: 'Upcoming' | 'Ongoing' | 'Completed' | 'Cancelled';
-  registrationDeadline: string;
-  rules?: string[];
-  discordChannel?: string;
+  location: string;
+  image: string;
+  status: "upcoming" | "ongoing" | "completed";
 }
 
 export default function EventsPage() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("upcoming");
-  const { data: session } = useSession();
-  const router = useRouter();
-  const [editEvent, setEditEvent] = useState<Event | null>(null);
-  const [showDialog, setShowDialog] = useState(false);
-  const [form, setForm] = useState<Partial<Event>>({});
-  const isEditMode = useEditMode();
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const { canEdit, isEditMode } = useEditMode();
 
-  const canEditEvents = session?.user?.role === UserRole.ADMIN && isEditMode;
+  // Mock data - replace with actual data fetching
+  const events: Event[] = [
+    {
+      id: "1",
+      title: "ARK: Survival Ascended Launch Party",
+      description: "Join us for the launch of our new ARK server!",
+      date: "2024-03-15",
+      time: "18:00 UTC",
+      location: "Discord",
+      image: "/saintsgaming-logo.png",
+      status: "upcoming",
+    },
+    {
+      id: "2",
+      title: "Minecraft Build Competition",
+      description: "Show off your building skills in our monthly competition!",
+      date: "2024-03-20",
+      time: "19:00 UTC",
+      location: "Minecraft Server",
+      image: "/saintsgaming-icon.png",
+      status: "upcoming",
+    },
+  ];
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
-    try {
-      const response = await fetch("/api/community/events");
-      if (!response.ok) throw new Error("Failed to fetch events");
-      const data = await response.json();
-      setEvents(data);
-    } catch (error) {
-      console.error("Error fetching events:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load events",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handleSave = async (id: string, field: keyof Event, value: string) => {
+    // Implement save functionality
+    console.log(`Saving ${field} for event ${id}:`, value);
   };
 
-  const filteredEvents = events.filter((event) => {
-    switch (activeTab) {
-      case "upcoming":
-        return event.status === "Upcoming";
-      case "ongoing":
-        return event.status === "Ongoing";
-      case "completed":
-        return event.status === "Completed";
-      default:
-        return true;
-    }
-  });
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-800 to-gray-900 text-white">
+      <div className="container mx-auto py-8">
+        <h1 className="text-4xl font-bold mb-8">Events</h1>
 
-  const handleEdit = (event: Event) => {
-    setEditEvent(event);
-    setForm(event);
-    setShowDialog(true);
-  };
-
-  const handleNew = () => {
-    setEditEvent(null);
-    setForm({
-      title: "",
-      description: "",
-      date: "",
-      time: "",
-      participants: 0,
-      maxParticipants: 0,
-      prize: "",
-      game: "",
-      type: "Tournament",
-      status: "Upcoming",
-      registrationDeadline: "",
-      rules: [],
-      discordChannel: "",
-    });
-    setShowDialog(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this event?")) return;
-    try {
-      const res = await fetch(`/api/community/events/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete event");
-      setEvents(events.filter(e => e.id !== id));
-      toast({ title: "Event deleted" });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to delete event", variant: "destructive" });
-    }
-  };
-
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const method = editEvent ? "PATCH" : "POST";
-      const url = editEvent ? `/api/community/events/${editEvent.id}` : "/api/community/events";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error("Failed to save event");
-      const updated = await res.json();
-      if (editEvent) {
-        setEvents(events.map(e => (e.id === updated.id ? updated : e)));
-        toast({ title: "Event updated" });
-      } else {
-        setEvents([updated, ...events]);
-        toast({ title: "Event created" });
-      }
-      setShowDialog(false);
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to save event", variant: "destructive" });
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-48 bg-gray-200 rounded"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Events List */}
+          <div className="lg:col-span-2 space-y-6">
+            {events.map((event) => (
+              <Card key={event.id} className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-gray-200">
+                        {canEdit && isEditMode ? (
+                          <EditableText
+                            value={event.title}
+                            onSave={async (value) => await handleSave(event.id, 'title', value)}
+                          />
+                        ) : (
+                          event.title
+                        )}
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        {canEdit && isEditMode ? (
+                          <EditableText
+                            value={event.description}
+                            onSave={async (value) => await handleSave(event.id, 'description', value)}
+                          />
+                        ) : (
+                          event.description
+                        )}
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          event.status === "upcoming"
+                            ? "bg-green-500"
+                            : event.status === "ongoing"
+                            ? "bg-yellow-500"
+                            : "bg-red-500"
+                        }`}
+                      />
+                      <span className="text-sm text-gray-400">
+                        {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="relative h-64 rounded-lg overflow-hidden">
+                      <Image
+                        src={event.image}
+                        alt={event.title}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">Date</p>
+                        <p className="text-lg font-medium text-gray-200">
+                          {canEdit && isEditMode ? (
+                            <EditableText
+                              value={event.date}
+                              onSave={async (value) => await handleSave(event.id, 'date', value)}
+                            />
+                          ) : (
+                            event.date
+                          )}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Time</p>
+                        <p className="text-lg font-medium text-gray-200">
+                          {canEdit && isEditMode ? (
+                            <EditableText
+                              value={event.time}
+                              onSave={async (value) => await handleSave(event.id, 'time', value)}
+                            />
+                          ) : (
+                            event.time
+                          )}
+                        </p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-sm text-gray-400">Location</p>
+                        <p className="text-lg font-medium text-gray-200">
+                          {canEdit && isEditMode ? (
+                            <EditableText
+                              value={event.location}
+                              onSave={async (value) => await handleSave(event.id, 'location', value)}
+                            />
+                          ) : (
+                            event.location
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <Button className="w-full bg-gray-700 hover:bg-gray-600" asChild>
+                      <Link href={`/events/${event.id}`}>View Details</Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
+          </div>
+
+          {/* Calendar */}
+          <div className="space-y-6">
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-gray-200">Calendar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  className="rounded-md border border-gray-700"
+                />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Events & Tournaments</h1>
-        {canEditEvents && (
-          <div className="flex gap-2">
-            <Button onClick={handleNew} variant="default">
-              <Plus className="w-4 h-4 mr-1" /> New Event
-            </Button>
-            <Button onClick={() => router.push("/admin/events")}>Manage Events</Button>
-          </div>
-        )}
-      </div>
-
-      <Tabs defaultValue="upcoming" className="mb-8">
-        <TabsList>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="ongoing">Ongoing</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-        </TabsList>
-        <TabsContent value="upcoming" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {filteredEvents.map((event) => (
-              <Card key={event.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>{event.title}</CardTitle>
-                      <CardDescription className="mt-2">{event.description}</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-yellow-500" />
-                      <span className="font-semibold">{event.prize}</span>
-                    </div>
-                  </div>
-                  {canEditEvents && (
-                    <div className="flex gap-2 mt-2">
-                      <Button size="icon" variant="ghost" onClick={() => handleEdit(event)}><Edit2 className="w-4 h-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(event.id)}><Trash2 className="w-4 h-4" /></Button>
-                    </div>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{format(new Date(event.date), "MMM d, yyyy")}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{event.time}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Gamepad2 className="h-4 w-4" />
-                        <span>{event.game}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>
-                          {event.participants}/{event.maxParticipants} participants
-                        </span>
-                      </div>
-                    </div>
-                    {event.registrationDeadline && (
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <AlertCircle className="h-4 w-4" />
-                        <span>
-                          Registration closes{" "}
-                          {format(new Date(event.registrationDeadline), "MMM d, yyyy")}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center pt-4">
-                      <Button variant="outline" className="w-full">
-                        View Details
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-        <TabsContent value="ongoing" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {filteredEvents.map((event) => (
-              <Card key={event.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>{event.title}</CardTitle>
-                      <CardDescription className="mt-2">
-                        {event.description}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-yellow-500" />
-                      <span className="font-semibold">{event.prize}</span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{format(new Date(event.date), "MMM d, yyyy")}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{event.time}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Gamepad2 className="h-4 w-4" />
-                        <span>{event.game}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>
-                          {event.participants}/{event.maxParticipants} participants
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center pt-4">
-                      <Button variant="outline" className="w-full">
-                        View Details
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-        <TabsContent value="completed" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {filteredEvents.map((event) => (
-              <Card key={event.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>{event.title}</CardTitle>
-                      <CardDescription className="mt-2">
-                        {event.description}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-yellow-500" />
-                      <span className="font-semibold">{event.prize}</span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{format(new Date(event.date), "MMM d, yyyy")}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{event.time}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Gamepad2 className="h-4 w-4" />
-                        <span>{event.game}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>
-                          {event.participants}/{event.maxParticipants} participants
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center pt-4">
-                      <Button variant="outline" className="w-full">
-                        View Results
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editEvent ? "Edit Event" : "New Event"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleFormSubmit} className="space-y-4">
-            <Input name="title" value={form.title || ""} onChange={handleFormChange} placeholder="Title" required />
-            <Textarea name="description" value={form.description || ""} onChange={handleFormChange} placeholder="Description" required />
-            <Input name="date" type="date" value={form.date || ""} onChange={handleFormChange} required />
-            <Input name="time" type="time" value={form.time || ""} onChange={handleFormChange} required />
-            <Input name="participants" type="number" value={form.participants || 0} onChange={handleFormChange} placeholder="Participants" required />
-            <Input name="maxParticipants" type="number" value={form.maxParticipants || 0} onChange={handleFormChange} placeholder="Max Participants" required />
-            <Input name="prize" value={form.prize || ""} onChange={handleFormChange} placeholder="Prize" />
-            <Input name="game" value={form.game || ""} onChange={handleFormChange} placeholder="Game" required />
-            <Input name="type" value={form.type || "Tournament"} onChange={handleFormChange} placeholder="Type" required />
-            <Input name="status" value={form.status || "Upcoming"} onChange={handleFormChange} placeholder="Status" required />
-            <Input name="registrationDeadline" type="date" value={form.registrationDeadline || ""} onChange={handleFormChange} placeholder="Registration Deadline" />
-            <Input name="discordChannel" value={form.discordChannel || ""} onChange={handleFormChange} placeholder="Discord Channel" />
-            <Textarea name="rules" value={Array.isArray(form.rules) ? form.rules.join("\n") : form.rules || ""} onChange={e => setForm(prev => ({ ...prev, rules: e.target.value.split("\n") }))} placeholder="Rules (one per line)" />
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
-              <Button type="submit" variant="default">Save</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 } 

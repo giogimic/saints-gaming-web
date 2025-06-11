@@ -1,133 +1,312 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Search, Users, Server, Gamepad2 } from 'lucide-react';
-import Link from 'next/link';
+import { useState, useEffect } from "react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import Image from "next/image";
+import { EditModeToggle } from "@/components/edit-mode-toggle";
+import { useEditMode } from "@/app/contexts/EditModeContext";
+import { toast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
-const games = [
-  {
-    id: 'minecraft',
-    name: 'Minecraft',
-    description: 'Play our custom modpacks: Saints Gaming and Dimensional Cobblemon',
-    image: '/games/minecraft.jpg',
-    servers: [
-      { name: 'Saints Gaming', players: '45/100', map: 'World' },
-      { name: 'Dimensional Cobblemon', players: '12/50', map: 'World' },
-    ],
-  },
-  {
-    id: 'stardew',
-    name: 'Stardew Valley',
-    description: 'Play our Holy Crop! modpack with enhanced farming and automation',
-    image: '/games/stardew.jpg',
-    servers: [
-      { name: 'Holy Crop! Server', players: '4/4', map: 'Farm' },
-    ],
-  },
-  {
-    id: 'ark',
-    name: 'ARK: Survival Ascended',
-    description: 'Join our Omega modded server for enhanced survival gameplay',
-    image: '/games/ark.jpg',
-    servers: [
-      { name: 'Omega Server', players: '70/70', map: 'The Island' },
-    ],
-  },
-];
+interface Game {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  status: "active" | "coming-soon";
+  features: string[];
+  modpack?: {
+    name: string;
+    url: string;
+  };
+}
+
+interface GamesContent {
+  title: string;
+  subtitle: string;
+  games: Game[];
+}
+
+const defaultContent: GamesContent = {
+  title: "Our Games",
+  subtitle: "Modded multiplayer experiences for every player",
+  games: [
+    {
+      id: "1",
+      title: "ARK: Survival Ascended",
+      description: "Join our Omega modded server for an enhanced PvE experience with quality-of-life improvements and expanded content.",
+      imageUrl: "/imgs/saintsgamingmc.jpg",
+      status: "active",
+      features: [
+        "Omega Mod Collection",
+        "Enhanced PvE Experience",
+        "Quality of Life Mods",
+        "Active Community"
+      ]
+    },
+    {
+      id: "2",
+      title: "Minecraft",
+      description: "Experience our custom modpacks featuring Cobblemon, enhanced combat, and immersive portals in a multiplayer environment.",
+      imageUrl: "/imgs/dimensionalcobblemon.jpg",
+      status: "active",
+      features: [
+        "Custom Modpacks",
+        "Cobblemon Integration",
+        "Enhanced Combat",
+        "Multiplayer Focus"
+      ],
+      modpack: {
+        name: "SaintsGaming Modpack",
+        url: "/modpacks"
+      }
+    },
+    {
+      id: "3",
+      title: "Stardew Valley",
+      description: "Transform your farm with our Holy Crop! modpack, featuring automation, cosmetics, and new features for an enhanced farming experience.",
+      imageUrl: "/imgs/holycrop.png",
+      status: "active",
+      features: [
+        "Automation Systems",
+        "Visual Enhancements",
+        "New Features",
+        "Co-op Support"
+      ],
+      modpack: {
+        name: "Holy Crop!",
+        url: "/modpacks"
+      }
+    }
+  ]
+};
 
 export default function GamesPage() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const { isEditMode, canEdit } = useEditMode();
+  const [isLoading, setIsLoading] = useState(true);
+  const [content, setContent] = useState<GamesContent>(defaultContent);
+  const [pageId, setPageId] = useState<string | null>(null);
 
-  const filteredGames = games.filter(game =>
-    game.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    game.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    fetchContent();
+  }, []);
+
+  const fetchContent = async () => {
+    try {
+      const response = await fetch("/api/content/games");
+      if (!response.ok) throw new Error("Failed to fetch content");
+      const data = await response.json();
+      
+      setPageId(data.id);
+      const parsedContent = typeof data.content === 'string' ? JSON.parse(data.content) : data.content;
+      
+      // Ensure the content structure is valid
+      const safeContent: GamesContent = {
+        title: parsedContent.title || defaultContent.title,
+        subtitle: parsedContent.subtitle || defaultContent.subtitle,
+        games: Array.isArray(parsedContent.games) 
+          ? parsedContent.games.map((game: any) => ({
+              id: game.id || String(Math.random()),
+              title: game.title || '',
+              description: game.description || '',
+              imageUrl: game.imageUrl || '',
+              status: game.status || 'active',
+              features: Array.isArray(game.features) ? game.features : [],
+              modpack: game.modpack || undefined
+            }))
+          : defaultContent.games
+      };
+      
+      setContent(safeContent);
+    } catch (error) {
+      console.error("Error fetching content:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load content. Using default content.",
+        variant: "destructive",
+      });
+      setContent(defaultContent);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async (field: keyof GamesContent, value: string) => {
+    if (!pageId) return;
+
+    const updatedContent = {
+      ...content,
+      [field]: value,
+    };
+
+    setContent(updatedContent);
+
+    try {
+      const response = await fetch("/api/content/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: pageId,
+          content: JSON.stringify(updatedContent),
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to save changes");
+
+      toast({
+        title: "Success",
+        description: "Changes saved successfully",
+      });
+    } catch (error) {
+      console.error("Error saving changes:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save changes",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGameUpdate = async (index: number, field: keyof Game, value: string | string[]) => {
+    if (!pageId) return;
+
+    const updatedContent = {
+      ...content,
+      games: content.games.map((game, i) =>
+        i === index ? { ...game, [field]: value } : game
+      ),
+    };
+
+    setContent(updatedContent);
+
+    try {
+      const response = await fetch("/api/content/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: pageId,
+          content: JSON.stringify(updatedContent),
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to save changes");
+
+      toast({
+        title: "Success",
+        description: "Changes saved successfully",
+      });
+    } catch (error) {
+      console.error("Error saving changes:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save changes",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-4 flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Our Games</h1>
-          <p className="text-muted-foreground mt-1">
-            Join our gaming servers and participate in tournaments
-          </p>
-        </div>
-        <div className="relative w-full md:w-auto">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search games..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 w-full md:w-[300px]"
-          />
+      {canEdit && <EditModeToggle />}
+      
+      <div className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-4xl font-bold">
+              {isEditMode && canEdit ? (
+                <Input
+                  value={content.title}
+                  onChange={(e) => handleSave("title", e.target.value)}
+                  className="text-4xl font-bold"
+                />
+              ) : (
+                content.title
+              )}
+            </CardTitle>
+            <CardDescription className="text-xl mt-2">
+              {isEditMode && canEdit ? (
+                <Input
+                  value={content.subtitle}
+                  onChange={(e) => handleSave("subtitle", e.target.value)}
+                  className="text-xl"
+                />
+              ) : (
+                content.subtitle
+              )}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {content.games.map((game, index) => (
+            <Card key={game.id}>
+              <CardHeader>
+                <div className="relative w-full h-[200px] rounded-lg overflow-hidden">
+                  {game.imageUrl ? (
+                    <Image
+                      src={game.imageUrl}
+                      alt={game.title}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                      <span className="text-muted-foreground">No image available</span>
+                    </div>
+                  )}
+                </div>
+                <CardTitle className="mt-4">
+                  {isEditMode && canEdit ? (
+                    <Input
+                      value={game.title}
+                      onChange={(e) => handleGameUpdate(index, "title", e.target.value)}
+                    />
+                  ) : (
+                    game.title
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  {isEditMode && canEdit ? (
+                    <Textarea
+                      value={game.description}
+                      onChange={(e) => handleGameUpdate(index, "description", e.target.value)}
+                    />
+                  ) : (
+                    game.description
+                  )}
+                </CardDescription>
+                <div className="flex flex-wrap gap-2">
+                  {Array.isArray(game.features) && game.features.map((feature, featureIndex) => (
+                    <Badge key={featureIndex} variant="secondary">
+                      {feature}
+                    </Badge>
+                  ))}
+                </div>
+                {game.modpack && (
+                  <Button asChild className="mt-4">
+                    <Link href={game.modpack.url}>
+                      View {game.modpack.name}
+                    </Link>
+                  </Button>
+                )}
+              </CardHeader>
+            </Card>
+          ))}
         </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredGames.map((game) => (
-          <Card key={game.id} className="overflow-hidden">
-            <div className="aspect-video relative">
-              <img
-                src={game.image}
-                alt={game.name}
-                className="object-cover w-full h-full"
-              />
-            </div>
-            <CardHeader>
-              <CardTitle>{game.name}</CardTitle>
-              <CardDescription>{game.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {game.servers.map((server, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 bg-muted rounded-lg"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Server className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{server.name}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>{server.players}</span>
-                      </div>
-                      <span>{server.map}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full" asChild>
-                <Link href={`/games/${game.id}`}>
-                  <Gamepad2 className="mr-2 h-4 w-4" />
-                  Play Now
-                </Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-
-      {filteredGames.length === 0 && (
-        <div className="text-center py-12 bg-muted rounded-lg">
-          <p className="text-muted-foreground">No games found.</p>
-          {searchQuery && (
-            <Button
-              variant="link"
-              onClick={() => setSearchQuery('')}
-              className="mt-2"
-            >
-              Clear search
-            </Button>
-          )}
-        </div>
-      )}
     </div>
   );
 } 

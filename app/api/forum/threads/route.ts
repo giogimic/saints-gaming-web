@@ -10,58 +10,71 @@ const threadSchema = z.object({
   categoryId: z.string(),
 });
 
-export async function GET(request: Request) {
+// Mock data - replace with actual database queries
+const threads = [
+  {
+    id: '1',
+    title: 'Welcome to Saints Gaming!',
+    content: 'Welcome to our community forum. Feel free to introduce yourself!',
+    author: {
+      id: '1',
+      name: 'Admin',
+      avatar: '/saintsgaming-logo.png'
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    categoryId: '1',
+    posts: 5,
+    views: 100
+  },
+  {
+    id: '2',
+    title: 'Server Rules and Guidelines',
+    content: 'Please read our server rules before joining.',
+    author: {
+      id: '1',
+      name: 'Admin',
+      avatar: '/saintsgaming-logo.png'
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    categoryId: '1',
+    posts: 2,
+    views: 50
+  }
+];
+
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const categoryId = searchParams.get('categoryId');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const sort = searchParams.get('sort') || 'newest';
-
-    const where = categoryId ? { categoryId } : {};
-    const orderBy = {
-      ...(sort === 'newest' && { createdAt: 'desc' }),
-      ...(sort === 'mostReplied' && { posts: { _count: 'desc' } }),
-      ...(sort === 'mostViewed' && { viewCount: 'desc' }),
-    };
-
-    const [threads, total] = await Promise.all([
-      prisma.thread.findMany({
-        where,
-        orderBy,
-        skip: (page - 1) * limit,
-        take: limit,
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-            },
-          },
-          category: true,
-          _count: {
-            select: { posts: true },
-          },
+    const threads = await prisma.thread.findMany({
+      include: {
+        author: {
+          select: { id: true, name: true, avatar: true }
         },
-      }),
-      prisma.thread.count({ where }),
-    ]);
-
-    return NextResponse.json({
-      threads,
-      pagination: {
-        total,
-        pages: Math.ceil(total / limit),
-        current: page,
+        category: {
+          select: { id: true, name: true }
+        },
+        posts: {
+          select: { id: true }
+        }
       },
+      orderBy: [
+        { isPinned: 'desc' },
+        { createdAt: 'desc' }
+      ]
     });
+
+    // Transform the data to include post count
+    const threadsWithCounts = threads.map(thread => ({
+      ...thread,
+      posts: thread.posts.length,
+      views: thread.views
+    }));
+
+    return NextResponse.json(threadsWithCounts);
   } catch (error) {
-    console.error('Error fetching threads:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch threads' },
-      { status: 500 }
-    );
+    console.error('[THREADS_GET]', error);
+    return new NextResponse('Internal error', { status: 500 });
   }
 }
 
@@ -73,11 +86,14 @@ export async function POST(req: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const { title, content, categoryId } = await req.json();
+    const body = await req.json();
+    const result = threadSchema.safeParse(body);
 
-    if (!title || !content || !categoryId) {
-      return new NextResponse('Missing required fields', { status: 400 });
+    if (!result.success) {
+      return new NextResponse('Invalid input', { status: 400 });
     }
+
+    const { title, content, categoryId } = result.data;
 
     const category = await prisma.category.findUnique({
       where: { id: categoryId },
@@ -93,10 +109,16 @@ export async function POST(req: Request) {
         content,
         authorId: session.user.id,
         categoryId,
+        views: 0
       },
       include: {
-        category: true,
-      },
+        author: {
+          select: { id: true, name: true, avatar: true }
+        },
+        category: {
+          select: { id: true, name: true }
+        }
+      }
     });
 
     return NextResponse.json(thread);

@@ -1,143 +1,231 @@
-'use client';
+"use client";
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Package, Gamepad2, Download, Info } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { EditModeToggle } from "@/components/edit-mode-toggle";
+import { usePageContent } from "@/app/hooks/usePageContent";
+
+interface Modpack {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  imageUrl: string;
+  features: string[];
+  tags: string[];
+  curseForgeUrl: string;
+}
+
+interface ModpacksContent {
+  title: string;
+  subtitle: string;
+  modpacks: Modpack[];
+}
+
+const defaultContent: ModpacksContent = {
+  title: "Our Modpacks",
+  subtitle: "Curated modpacks for the best gaming experience",
+  modpacks: [
+    {
+      id: "1",
+      title: "SaintsGaming Modpack",
+      description: "Our flagship modpack featuring 400+ mods, including Cobblemon integration, enhanced world generation, and quality-of-life improvements.",
+      type: "Minecraft",
+      imageUrl: "/imgs/saintsgamingmc.jpg",
+      features: [
+        "400+ Mods",
+        "Cobblemon Integration",
+        "Enhanced World Gen",
+        "QoL Improvements"
+      ],
+      tags: ["Minecraft", "Cobblemon", "Adventure"],
+      curseForgeUrl: "https://www.curseforge.com/minecraft/modpacks/saintsgaming"
+    },
+    {
+      id: "2",
+      title: "Dimensional Cobblemon",
+      description: "A unique Pokémon-style adventure with dimensional exploration and custom Pokémon mechanics.",
+      type: "Minecraft",
+      imageUrl: "/imgs/dimensionalcobblemon.jpg",
+      features: [
+        "Custom Dimensions",
+        "Pokémon Mechanics",
+        "Adventure Focus",
+        "Custom Biomes"
+      ],
+      tags: ["Minecraft", "Cobblemon", "Adventure"],
+      curseForgeUrl: "https://www.curseforge.com/minecraft/modpacks/dimensional-cobblemon"
+    },
+    {
+      id: "3",
+      title: "Holy Crop!",
+      description: "A comprehensive Stardew Valley modpack focusing on farming automation and visual enhancements.",
+      type: "Stardew Valley",
+      imageUrl: "/imgs/holycrop.png",
+      features: [
+        "Farming Automation",
+        "Visual Enhancements",
+        "New Crops",
+        "Quality of Life"
+      ],
+      tags: ["Stardew Valley", "Farming", "Automation"],
+      curseForgeUrl: "https://www.curseforge.com/stardewvalley/modpacks/holy-crop"
+    }
+  ]
+};
 
 export default function ModpacksPage() {
+  const {
+    content,
+    isLoading,
+    isEditMode,
+    canEdit,
+    handleSave,
+    handleNestedSave,
+  } = usePageContent({
+    pageId: "modpacks",
+    defaultContent,
+  });
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-4">Our Modpacks</h1>
-        <p className="text-xl text-muted-foreground">
-          Custom modpacks designed for the best gaming experience
-        </p>
-      </div>
-
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {/* Saints Gaming Modpack */}
-        <Card>
+      {canEdit && <EditModeToggle />}
+      
+      <div className="space-y-8">
+        <Card className="bg-gradient-to-r from-primary/5 to-primary/10">
           <CardHeader>
-            <div className="flex items-center gap-2 mb-2">
-              <Package className="w-6 h-6" />
-              <Badge variant="default">Minecraft</Badge>
-              <Badge variant="secondary">1.21.1</Badge>
-            </div>
-            <CardTitle>Saints Gaming</CardTitle>
-            <CardDescription>400+ mods for exploration and automation</CardDescription>
+            <CardTitle className="text-4xl font-bold">
+              {isEditMode && canEdit ? (
+                <Input
+                  value={content.title}
+                  onChange={(e) => handleSave("title", e.target.value)}
+                  className="text-4xl font-bold"
+                />
+              ) : (
+                content.title
+              )}
+            </CardTitle>
+            <CardDescription className="text-xl mt-2">
+              {isEditMode && canEdit ? (
+                <Input
+                  value={content.subtitle}
+                  onChange={(e) => handleSave("subtitle", e.target.value)}
+                  className="text-xl"
+                />
+              ) : (
+                content.subtitle
+              )}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Info className="w-4 h-4" />
-                <span className="text-sm">NeoForge Required</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                A fully loaded modpack for multiplayer Minecraft with over 400 mods. Features seamless dimension travel with Immersive Portals, enhanced movement with Parcool, and modern combat systems. Includes advanced storage networks, tech trees, world generation, and performance tuning.
-              </p>
-            </div>
-          </CardContent>
-          <CardFooter className="flex gap-4">
-            <Button asChild variant="outline" className="flex-1">
-              <a href="https://www.curseforge.com/minecraft/modpacks/saints-gaming" target="_blank" rel="noopener noreferrer">
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </a>
-            </Button>
-            <Button asChild className="flex-1">
-              <a href="/servers" target="_blank" rel="noopener noreferrer">
-                Join Server
-              </a>
-            </Button>
-          </CardFooter>
         </Card>
 
-        {/* Dimensional Cobblemon */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2 mb-2">
-              <Package className="w-6 h-6" />
-              <Badge variant="default">Minecraft</Badge>
-              <Badge variant="secondary">1.21.1</Badge>
-            </div>
-            <CardTitle>Dimensional Cobblemon</CardTitle>
-            <CardDescription>Pokémon adventure with magic and exploration</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Info className="w-4 h-4" />
-                <span className="text-sm">NeoForge Required</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {content.modpacks.map((modpack: Modpack) => (
+            <Card key={modpack.id} className="overflow-hidden">
+              <div className="relative h-48 w-full">
+                <Image
+                  src={modpack.imageUrl}
+                  alt={modpack.title}
+                  fill
+                  className="object-cover"
+                />
               </div>
-              <p className="text-sm text-muted-foreground">
-                A Pokémon-style adventure pack with full Cobblemon integration, magic, and dimensional exploration. Includes Immersive Portals, Parcool, Blue Skies, Twilight Forest, and world-expanding systems. Balanced for performance with enhanced visuals, combat AI upgrades, and multiplayer syncing tools.
-              </p>
-            </div>
-          </CardContent>
-          <CardFooter className="flex gap-4">
-            <Button asChild variant="outline" className="flex-1">
-              <a href="https://www.curseforge.com/minecraft/modpacks/dimensional-cobblemon" target="_blank" rel="noopener noreferrer">
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </a>
-            </Button>
-            <Button asChild className="flex-1">
-              <a href="/servers" target="_blank" rel="noopener noreferrer">
-                Join Server
-              </a>
-            </Button>
-          </CardFooter>
-        </Card>
-
-        {/* Holy Crop! */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2 mb-2">
-              <Gamepad2 className="w-6 h-6" />
-              <Badge variant="default">Stardew Valley</Badge>
-              <Badge variant="secondary">SMAPI</Badge>
-            </div>
-            <CardTitle>Holy Crop!</CardTitle>
-            <CardDescription>Farming and automation overhaul</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Info className="w-4 h-4" />
-                <span className="text-sm">SMAPI Required</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                A curated Stardew Valley overhaul focused on farming, automation, NPC depth, and visual improvements. Adds over 100 mods for crafting, storage, cooking, seasonal aesthetics, and farming systems. Balanced for long save files and multiplayer sync.
-              </p>
-            </div>
-          </CardContent>
-          <CardFooter className="flex gap-4">
-            <Button asChild variant="outline" className="flex-1">
-              <a href="https://www.curseforge.com/stardewvalley/modpacks/holy-crop" target="_blank" rel="noopener noreferrer">
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </a>
-            </Button>
-            <Button asChild className="flex-1">
-              <a href="/servers" target="_blank" rel="noopener noreferrer">
-                Join Server
-              </a>
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-
-      <div className="mt-12 text-center">
-        <h2 className="text-2xl font-bold mb-4">Need Help?</h2>
-        <p className="text-muted-foreground mb-6">
-          Join our Discord community for modpack support, installation help, and to connect with other players
-        </p>
-        <Button asChild size="lg">
-          <a href="discord://discord.com/channels/your-server-id" target="_blank" rel="noopener noreferrer">
-            Join Our Discord
-          </a>
-        </Button>
+              <CardHeader>
+                <CardTitle>
+                  {isEditMode && canEdit ? (
+                    <Input
+                      value={modpack.title}
+                      onChange={(e) => handleNestedSave("modpacks", modpack.id, "title", e.target.value)}
+                    />
+                  ) : (
+                    modpack.title
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  {isEditMode && canEdit ? (
+                    <Input
+                      value={modpack.type}
+                      onChange={(e) => handleNestedSave("modpacks", modpack.id, "type", e.target.value)}
+                    />
+                  ) : (
+                    modpack.type
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  {isEditMode && canEdit ? (
+                    <Input
+                      value={modpack.description}
+                      onChange={(e) => handleNestedSave("modpacks", modpack.id, "description", e.target.value)}
+                    />
+                  ) : (
+                    modpack.description
+                  )}
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold mb-2">Features:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {modpack.features.map((feature: string, index: number) => (
+                        <Badge key={index} variant="secondary">
+                          {isEditMode && canEdit ? (
+                            <Input
+                              value={feature}
+                              onChange={(e) => {
+                                const newFeatures = [...modpack.features];
+                                newFeatures[index] = e.target.value;
+                                handleNestedSave("modpacks", modpack.id, "features", newFeatures);
+                              }}
+                              className="h-6 px-2"
+                            />
+                          ) : (
+                            feature
+                          )}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Tags:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {modpack.tags.map((tag: string, index: number) => (
+                        <Badge key={index} variant="outline">
+                          {isEditMode && canEdit ? (
+                            <Input
+                              value={tag}
+                              onChange={(e) => {
+                                const newTags = [...modpack.tags];
+                                newTags[index] = e.target.value;
+                                handleNestedSave("modpacks", modpack.id, "tags", newTags);
+                              }}
+                              className="h-6 px-2"
+                            />
+                          ) : (
+                            tag
+                          )}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <Button asChild className="w-full">
+                    <Link href={modpack.curseForgeUrl} target="_blank">
+                      Download on CurseForge
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );

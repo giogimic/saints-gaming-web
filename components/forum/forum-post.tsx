@@ -1,145 +1,125 @@
-'use client';
+"use client";
 
 import { useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { updatePost } from '@/lib/storage';
-import { ForumPost as ForumPostType, ForumReply } from '@/lib/types';
-import { hasPermission } from '@/lib/auth';
-import { savePost, updatePost } from '@/lib/storage';
-import { randomUUID } from 'crypto';
+import { useEditMode } from '@/app/contexts/EditModeContext';
 
-interface ForumPostProps {
-  post: ForumPostType;
-  currentUser: User | null;
-  onUpdate?: () => void;
+interface Post {
+  id: string;
+  content: string;
+  author: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  comments: Comment[];
 }
 
-export function ForumPost({ post, currentUser, onUpdate }: ForumPostProps) {
-  const [replyContent, setReplyContent] = useState('');
-  const [isReplying, setIsReplying] = useState(false);
-
-  const canReply = currentUser && hasPermission(currentUser.role, 'user');
-  const canModerate = currentUser && hasPermission(currentUser.role, 'mod');
-
-  const handleReply = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!replyContent.trim()) return;
-
-    const newReply: ForumReply = {
-      id: Date.now().toString(),
-      postId: post.id,
-      content: replyContent,
-      authorId: 'current-user', // TODO: Get from auth context
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isEdited: false,
-      likes: [],
-      isSolution: false
-    };
-
-    await updatePost(post.id, {
-      replies: [...(post.replies || []), newReply],
-    });
-
-    setReplyContent('');
-    setIsReplying(false);
-    onUpdate?.();
+interface Comment {
+  id: string;
+  content: string;
+  author: {
+    id: string;
+    name: string;
+    avatar: string;
   };
+  createdAt: string;
+  updatedAt: string;
+}
 
-  const handleLock = async () => {
-    if (!canModerate) return;
+export function ForumPost({ post }: { post: Post }) {
+  const { isEditMode } = useEditMode();
+  const [comments, setComments] = useState<Comment[]>(post.comments || []);
+  const [newComment, setNewComment] = useState('');
 
-    const updatedPost = {
-      ...post,
-      isLocked: !post.isLocked,
-    };
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
 
-    await savePost(updatedPost);
-    onUpdate?.();
-  };
+    try {
+      const response = await fetch(`/api/forum/posts/${post.id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: newComment }),
+      });
 
-  const handlePin = async () => {
-    if (!canModerate) return;
+      if (!response.ok) {
+        throw new Error('Failed to add comment');
+      }
 
-    const updatedPost = {
-      ...post,
-      isPinned: !post.isPinned,
-    };
-
-    await savePost(updatedPost);
-    onUpdate?.();
+      const comment = await response.json();
+      setComments(prev => [...prev, comment]);
+      setNewComment('');
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-lg border bg-card p-6">
-        <div className="space-y-4">
+    <div className={`space-y-4${isEditMode ? ' edit-mode' : ''}`}>
+      <div className="flex gap-4">
+        <img
+          src={post.author.avatar}
+          alt={post.author.name}
+          className="w-10 h-10 rounded-full"
+        />
+        <div className="flex-1">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">{post.title}</h2>
-            {canModerate && (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLock}
-                >
-                  {post.isLocked ? 'Unlock' : 'Lock'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePin}
-                >
-                  {post.isPinned ? 'Unpin' : 'Pin'}
-                </Button>
-              </div>
-            )}
+            <div>
+              <span className="font-semibold">{post.author.name}</span>
+              <span className="text-sm text-muted-foreground ml-2">
+                {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+              </span>
+            </div>
           </div>
-          <p className="text-muted-foreground">{post.content}</p>
+          <div className="mt-2 prose prose-invert max-w-none">
+            {post.content}
+          </div>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {post.replies && post.replies.length > 0 && (
-          <div className="ml-4 mb-4">
-            {post.replies.map((reply) => (
-              <div key={reply.id} className="border-l-2 pl-4 mb-2">
-                <p className="text-sm text-gray-600">{reply.content}</p>
-                <p className="text-xs text-gray-400">
-                  {new Date(reply.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {canReply && !post.isLocked && (
-          <div className="space-y-4">
-            {!isReplying ? (
-              <Button onClick={() => setIsReplying(true)}>Reply</Button>
-            ) : (
-              <form onSubmit={handleReply} className="mt-4">
-                <Textarea
-                  value={replyContent}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReplyContent(e.target.value)}
-                  placeholder="Write your reply..."
-                  className="mb-2"
-                />
-                <div className="flex gap-2">
-                  <Button type="submit">Submit</Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsReplying(false)}
-                  >
-                    Cancel
-                  </Button>
+      {comments.length > 0 && (
+        <div className="ml-12 space-y-4">
+          {comments.map((comment) => (
+            <div key={comment.id} className="flex gap-4">
+              <img
+                src={comment.author.avatar}
+                alt={comment.author.name}
+                className="w-8 h-8 rounded-full"
+              />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-semibold">{comment.author.name}</span>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                    </span>
+                  </div>
                 </div>
-              </form>
-            )}
-          </div>
-        )}
+                <div className="mt-2 prose prose-invert max-w-none">
+                  {comment.content}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="ml-12">
+        <Textarea
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          placeholder="Write a comment..."
+          className="mb-2"
+        />
+        <Button onClick={handleAddComment} disabled={!newComment.trim()}>
+          Add Comment
+        </Button>
       </div>
     </div>
   );

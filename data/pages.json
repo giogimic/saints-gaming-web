@@ -3,16 +3,7 @@
     "id": "home",
     "path": "/",
     "title": "Welcome to SaintsGaming",
-    "content": "<h1>Welcome to SaintsGaming</h1><p>Your ultimate modded gaming community. Join us for Minecraft, Stardew Valley, and ARK: Survival Ascended!</p>",
-    "lastEditedBy": "owner-1",
-    "lastEditedAt": "2024-03-08T00:00:00.000Z",
-    "minRoleToEdit": "admin"
-  },
-  {
-    "id": "about",
-    "path": "/about",
-    "title": "About SaintsGaming",
-    "content": "<h1>About SaintsGaming</h1><p>We are a community of gamers who love modded games and creating amazing experiences together.</p>",
+    "content": "<h1>Welcome to SaintsGaming</h1><p>Your home for modded multiplayer gaming.</p>",
     "lastEditedBy": "owner-1",
     "lastEditedAt": "2024-03-08T00:00:00.000Z",
     "minRoleToEdit": "admin"

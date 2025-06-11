@@ -1,0 +1,178 @@
+:root {
+  /* Base Colors */
+  --background: #272727;
+  --foreground: #ffffff;
+  
+  /* Primary Colors */
+  --primary: #50C878;      /* Emerald */
+  --primary-dark: #214F4B; /* Deep Forest Green */
+  --primary-light: #008080; /* Teal */
+  
+  /* Accent Colors */
+  --accent: #9932CC;      /* Dark Orchid */
+  --accent-light: #9966CC; /* Amethyst */
+  
+  /* UI States */
+  --success: #50C878;
+  --warning: #FFB800;
+  --error: #FF4B4B;
+  --info: #008080;
+  
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #9966CC;
+  --text-muted: #a0a0a0;
+  
+  /* Border Colors */
+  --border-primary: #50C878;
+  --border-secondary: #214F4B;
+  --border-muted: #404040;
+  
+  /* Shadow Colors */
+  --shadow-color: rgba(0, 0, 0, 0.25);
+  --shadow-color-hover: rgba(80, 200, 120, 0.15);
+}
+
+/* Force dark mode */
+:root[class~="dark"] {
+  color-scheme: dark;
+}
+
+/* Typography */
+.font-heading {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.font-body {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* UI Elements */
+.btn-primary {
+  @apply bg-[#50C878] text-white px-4 py-2 rounded-lg 
+         hover:bg-[#214F4B] transition-colors duration-200
+         focus:ring-2 focus:ring-[#50C878] focus:ring-opacity-50;
+}
+
+.btn-secondary {
+  @apply bg-[#214F4B] text-white px-4 py-2 rounded-lg
+         hover:bg-[#50C878] transition-colors duration-200
+         focus:ring-2 focus:ring-[#50C878] focus:ring-opacity-50;
+}
+
+.btn-accent {
+  @apply bg-[#9932CC] text-white px-4 py-2 rounded-lg
+         hover:bg-[#9966CC] transition-colors duration-200
+         focus:ring-2 focus:ring-[#9932CC] focus:ring-opacity-50;
+}
+
+/* Cards */
+.card-base {
+  @apply bg-[#214F4B] border border-[#50C878] rounded-lg
+         shadow-lg hover:shadow-xl transition-shadow duration-200;
+}
+
+.card-header {
+  @apply border-b border-[#50C878] p-4;
+}
+
+.card-content {
+  @apply p-4;
+}
+
+/* Form Elements */
+.input-base {
+  @apply bg-[#272727] border border-[#50C878] rounded-lg px-4 py-2
+         focus:ring-2 focus:ring-[#50C878] focus:ring-opacity-50
+         placeholder:text-[#9966CC];
+}
+
+/* Edit Mode */
+.edit-mode-active {
+  @apply ring-2 ring-[#50C878] ring-opacity-50;
+}
+
+.edit-mode-hover {
+  @apply hover:ring-2 hover:ring-[#50C878] hover:ring-opacity-50
+         transition-all duration-200;
+}
+
+/* Animations */
+.hover-lift {
+  @apply transition-transform duration-200 hover:-translate-y-1;
+}
+
+.hover-glow {
+  @apply transition-shadow duration-200 hover:shadow-[0_0_15px_rgba(80,200,120,0.3)];
+}
+
+/* Status Indicators */
+.status-success {
+  @apply text-[#50C878];
+}
+
+.status-warning {
+  @apply text-[#FFB800];
+}
+
+.status-error {
+  @apply text-[#FF4B4B];
+}
+
+.status-info {
+  @apply text-[#008080];
+}
+
+/* Gradients */
+.gradient-primary {
+  @apply bg-gradient-to-br from-[#214F4B] to-[#50C878];
+}
+
+.gradient-accent {
+  @apply bg-gradient-to-br from-[#9932CC] to-[#9966CC];
+}
+
+/* Spacing System */
+.space-xs { @apply space-y-2; }
+.space-sm { @apply space-y-4; }
+.space-md { @apply space-y-6; }
+.space-lg { @apply space-y-8; }
+.space-xl { @apply space-y-12; }
+
+/* Accessibility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-[#50C878] focus:ring-opacity-50;
+}
+
+/* Transitions */
+.transition-base {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+/* Loading States */
+.loading-pulse {
+  @apply animate-pulse bg-[#50C878]/20;
+}
+
+/* Scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #50C878 #214F4B;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #214F4B;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #50C878;
+  border-radius: 4px;
+} 

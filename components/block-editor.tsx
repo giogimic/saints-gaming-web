@@ -94,7 +94,7 @@ export function BlockEditor({ block, onSave }: BlockEditorProps) {
     onSave({
       ...block,
       content,
-      title,
+        title,
       settings,
       order: block.order,
     });
@@ -102,7 +102,7 @@ export function BlockEditor({ block, onSave }: BlockEditorProps) {
 
   const editor = useEditor({
     extensions: [StarterKit, Image, Link, TextAlign],
-    content,
+        content,
     onUpdate: ({ editor }) => setContent(editor.getHTML()),
   });
 
@@ -504,31 +504,31 @@ export function BlockEditor({ block, onSave }: BlockEditorProps) {
           </div>
           <div className="space-y-2">
             <Label>Text Color</Label>
-            <Input
+        <Input
               type="color"
               value={settings.textColor || "#000000"}
               onChange={(e) => setSettings({ ...settings, textColor: e.target.value })}
-            />
-          </div>
+        />
+      </div>
           <div className="space-y-2">
             <Label>Padding</Label>
             <Input
               value={settings.padding || "1rem"}
               onChange={(e) => setSettings({ ...settings, padding: e.target.value })}
               placeholder="Enter padding (e.g., 1rem)"
-            />
-          </div>
+        />
+      </div>
           <div className="space-y-2">
             <Label>Margin</Label>
-            <Input
+        <Input
               value={settings.margin || "0"}
               onChange={(e) => setSettings({ ...settings, margin: e.target.value })}
               placeholder="Enter margin (e.g., 1rem)"
-            />
-          </div>
+        />
+      </div>
           <div className="space-y-2">
             <Label>Border Radius</Label>
-            <Input
+        <Input
               value={settings.borderRadius || "0"}
               onChange={(e) => setSettings({ ...settings, borderRadius: e.target.value })}
               placeholder="Enter border radius (e.g., 0.5rem)"

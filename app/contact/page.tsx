@@ -9,7 +9,7 @@ import { toast } from "@/components/ui/use-toast";
 import { UserRole } from "@/lib/permissions";
 import { Loader2, Mail, MessageSquare, Users, Send, Phone, MapPin, Edit2, Save, X, Image as ImageIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useEditMode } from "@/components/admin-widget";
+import { useEditMode } from '@/app/contexts/EditModeContext';
 import { EditableText } from "@/app/components/editable-text";
 
 interface EditableContent {

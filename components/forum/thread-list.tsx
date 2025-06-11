@@ -5,15 +5,22 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThreadForm } from "./thread-form";
+import { SelectItem } from "@/components/ui/select";
 
 interface Thread {
   id: string;
   title: string;
+  content: string;
   author: {
+    id: string;
     name: string;
+    avatar: string;
   };
   createdAt: string;
-  replies: number;
+  updatedAt: string;
+  categoryId: string;
+  posts: number;
+  views: number;
 }
 
 interface ThreadListProps {
@@ -88,7 +95,7 @@ export function ThreadList({ categoryId }: ThreadListProps) {
                     </p>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {thread.replies} replies
+                    {thread.posts} posts
                   </div>
                 </div>
               </Link>

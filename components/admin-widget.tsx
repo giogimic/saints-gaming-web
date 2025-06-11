@@ -1,6 +1,5 @@
 "use client"
 
-import { createContext, useContext, useState, ReactNode } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -18,41 +17,17 @@ import {
 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-
-const EditModeContext = createContext<{
-  isEditMode: boolean;
-  setEditMode: (mode: boolean) => void;
-}>({
-  isEditMode: false,
-  setEditMode: () => {},
-});
-
-export function EditModeProvider({ children }: { children: ReactNode }) {
-  const [isEditMode, setEditMode] = useState(false);
-  return (
-    <EditModeContext.Provider value={{ isEditMode, setEditMode }}>
-      {children}
-    </EditModeContext.Provider>
-  );
-}
-
-export function useEditMode() {
-  return useContext(EditModeContext).isEditMode;
-}
-
-export function useSetEditMode() {
-  return useContext(EditModeContext).setEditMode;
-}
+import { useEditMode } from '@/app/contexts/EditModeContext';
+import { useState } from 'react';
 
 export function AdminWidget() {
   const { data: session } = useSession()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
-  const isEditMode = useEditMode()
-  const setEditMode = useSetEditMode()
+  const { isEditMode, toggleEditMode } = useEditMode();
 
-  if (!session?.user || ![UserRole.ADMIN, UserRole.MODERATOR].includes(session.user.role)) {
+  if (!session?.user || session.user.role !== UserRole.ADMIN) {
     return null
   }
 
@@ -79,53 +54,28 @@ export function AdminWidget() {
     },
   ]
 
-  const handleEditModeChange = (checked: boolean) => {
-    setEditMode(checked)
-  }
-
   return (
-    <div
-      className={`fixed bottom-4 right-4 z-50 transition-all duration-300 ${
-        isMinimized ? "w-12" : "w-64"
-      }`}
-    >
-      <Card className="relative shadow-lg">
-        {!isMinimized && (
-          <div className="absolute -top-2 -right-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 rounded-full bg-background"
-              onClick={() => setIsOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-        
+    <div className="fixed bottom-4 right-4 z-50">
+      <Card className={`bg-gray-800 border-gray-700 shadow-lg ${isOpen ? 'w-64' : 'w-auto'}`}>
         {isOpen ? (
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Admin Panel</h3>
+              <h3 className="text-lg font-semibold text-white">Admin Panel</h3>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsMinimized(!isMinimized)}
+                className="h-8 w-8 rounded-full"
+                onClick={() => setIsOpen(false)}
               >
-                {isMinimized ? (
-                  <ChevronRight className="h-4 w-4" />
-                ) : (
-                  <ChevronLeft className="h-4 w-4" />
-                )}
+                <X className="h-4 w-4" />
               </Button>
             </div>
-            
             {!isMinimized && (
               <div className="space-y-4">
                 <div className="flex items-center space-x-2 border-b pb-4">
                   <Switch
                     checked={isEditMode}
-                    onCheckedChange={handleEditModeChange}
+                    onCheckedChange={toggleEditMode}
                     id="edit-mode"
                   />
                   <Label htmlFor="edit-mode" className="flex items-center gap-2">
@@ -154,7 +104,7 @@ export function AdminWidget() {
             <div className="flex items-center justify-between mb-2">
               <Switch
                 checked={isEditMode}
-                onCheckedChange={handleEditModeChange}
+                onCheckedChange={toggleEditMode}
                 id="edit-mode-mini"
               />
               <Button

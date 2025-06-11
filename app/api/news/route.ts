@@ -8,39 +8,22 @@ import { newsPosts } from "@/lib/db/schema"
 import { UserRole } from "@/lib/permissions"
 import slugify from "slugify"
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get("id")
-
-    if (id) {
-      const news = await prisma.news.findUnique({
-        where: { id },
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-            },
-          },
-        },
-      })
-
-      if (!news) {
-        return new NextResponse("News not found", { status: 404 })
-      }
-
-      return NextResponse.json(news)
-    }
-
-    const news = await prisma.news.findMany({
+    const articles = await prisma.newsArticle.findMany({
       include: {
         author: {
           select: {
             id: true,
             name: true,
-            image: true,
+            avatar: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
           },
         },
       },
@@ -49,32 +32,45 @@ export async function GET(request: Request) {
       },
     })
 
-    return NextResponse.json(news)
+    return NextResponse.json(articles)
   } catch (error) {
     console.error("[NEWS_GET]", error)
-    return new NextResponse("Internal error", { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to fetch news articles" },
+      { status: 500 }
+    )
   }
 }
 
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user || !["admin", "moderator"].includes(session.user.role)) {
-      return new NextResponse("Unauthorized", { status: 401 })
+
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
     }
 
     const body = await request.json()
-    const { title, content, published } = body
+    const { title, content, excerpt, image, categoryId, featured } = body
 
-    if (!title || !content) {
-      return new NextResponse("Missing required fields", { status: 400 })
+    if (!title || !content || !excerpt || !image || !categoryId) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      )
     }
 
-    const news = await prisma.news.create({
+    const article = await prisma.newsArticle.create({
       data: {
         title,
         content,
-        published: published ?? false,
+        excerpt,
+        image,
+        categoryId,
+        featured,
         authorId: session.user.id,
       },
       include: {
@@ -82,16 +78,26 @@ export async function POST(request: Request) {
           select: {
             id: true,
             name: true,
-            image: true,
+            avatar: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
           },
         },
       },
     })
 
-    return NextResponse.json(news)
+    return NextResponse.json(article)
   } catch (error) {
     console.error("[NEWS_POST]", error)
-    return new NextResponse("Internal error", { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to create news article" },
+      { status: 500 }
+    )
   }
 }
 

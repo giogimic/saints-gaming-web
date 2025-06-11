@@ -75,16 +75,10 @@ export type Permission =
 /**
  * Check if a user role has a specific permission
  */
-export function hasPermission(userRole: string | undefined, requiredRole: UserRole): boolean {
+export function hasPermission(userRole: string | undefined, permission: Permission): boolean {
   if (!userRole) return false;
-
-  const roleHierarchy = {
-    [UserRole.ADMIN]: 3,
-    [UserRole.MODERATOR]: 2,
-    [UserRole.USER]: 1,
-  };
-
-  return roleHierarchy[userRole as UserRole] >= roleHierarchy[requiredRole];
+  const role = userRole as UserRole;
+  return ROLE_PERMISSIONS[role]?.includes(permission) || false;
 }
 
 /**
@@ -195,13 +189,13 @@ export const PERMISSIONS: Record<Permission, string> = {
 };
 
 export const canEditContent = (userRole: string | undefined): boolean => {
-  return hasPermission(userRole, UserRole.MODERATOR);
+  return hasPermission(userRole, 'edit:page');
 };
 
 export const canManageUsers = (userRole: string | undefined): boolean => {
-  return hasPermission(userRole, UserRole.ADMIN);
+  return hasPermission(userRole, 'manage:users');
 };
 
 export const canManageSettings = (userRole: string | undefined): boolean => {
-  return hasPermission(userRole, UserRole.ADMIN);
+  return hasPermission(userRole, 'manage:settings');
 }; 

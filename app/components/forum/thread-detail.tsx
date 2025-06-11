@@ -1,18 +1,15 @@
-"use client";
-
-import { useState } from 'react';
-import { MessageSquare, Clock, User, ThumbsUp, Flag, Pin, Lock } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TiptapEditor } from '@/components/tiptap-editor';
-import { useSession } from 'next-auth/react';
-import { hasPermission } from '@/lib/permissions';
-import { toast } from '@/components/ui/use-toast';
-import { Badge } from '@/components/ui/badge';
+interface Post {
+  id: string;
+  content: string;
+  createdAt: Date;
+  author: {
+    id: string;
+    username: string;
+    avatarUrl?: string;
+  };
+  likes: number;
+  comments: Comment[];
+}
 
 interface Comment {
   id: string;
@@ -24,7 +21,6 @@ interface Comment {
     avatarUrl?: string;
   };
   likes: number;
-  replies: Comment[];
 }
 
 interface ThreadDetailProps {
@@ -42,13 +38,13 @@ interface ThreadDetailProps {
     };
     tags: string[];
   };
-  comments: Comment[];
+  posts: Post[];
 }
 
-export function ThreadDetail({ thread, comments }: ThreadDetailProps) {
+export function ThreadDetail({ thread, posts }: ThreadDetailProps) {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState('discussion');
-  const [replyContent, setReplyContent] = useState('');
+  const [postContent, setPostContent] = useState('');
 
   const canManageThreads = session?.user && hasPermission(session.user.role, 'manage:content');
   const canPost = !thread.isLocked || canManageThreads;
@@ -89,26 +85,26 @@ export function ThreadDetail({ thread, comments }: ThreadDetailProps) {
     }
   };
 
-  const renderComment = (comment: Comment, depth = 0) => (
-    <div key={comment.id} className={`ml-${depth * 4} mt-4`}>
+  const renderPost = (post: Post) => (
+    <div key={post.id} className="mt-4">
       <Card className="p-4">
         <div className="flex gap-4">
           <Avatar>
-            <AvatarImage src={comment.author.avatarUrl} />
-            <AvatarFallback>{comment.author.username[0]}</AvatarFallback>
+            <AvatarImage src={post.author.avatarUrl} />
+            <AvatarFallback>{post.author.username[0]}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="font-semibold">{comment.author.username}</span>
+                <span className="font-semibold">{post.author.username}</span>
                 <span className="text-sm text-muted-foreground">
-                  {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
+                  {formatDistanceToNow(post.createdAt, { addSuffix: true })}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm">
                   <ThumbsUp className="w-4 h-4 mr-1" />
-                  {comment.likes}
+                  {post.likes}
                 </Button>
                 <Button variant="ghost" size="sm">
                   <Flag className="w-4 h-4" />
@@ -116,17 +112,39 @@ export function ThreadDetail({ thread, comments }: ThreadDetailProps) {
               </div>
             </div>
             <div className="mt-2 prose prose-sm max-w-none">
-              {comment.content}
+              {post.content}
             </div>
             <div className="mt-2">
-              <Button variant="ghost" size="sm" onClick={() => setReplyContent('')}>
-                Reply
+              <Button variant="ghost" size="sm" onClick={() => setPostContent('')}>
+                Comment
               </Button>
             </div>
           </div>
         </div>
       </Card>
-      {comment.replies?.map((reply) => renderComment(reply, depth + 1))}
+      {post.comments?.map((comment) => (
+        <div key={comment.id} className="ml-8 mt-2">
+          <Card className="p-3">
+            <div className="flex gap-3">
+              <Avatar className="w-6 h-6">
+                <AvatarImage src={comment.author.avatarUrl} />
+                <AvatarFallback>{comment.author.username[0]}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm">{comment.author.username}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
+                  </span>
+                </div>
+                <div className="mt-1 text-sm">
+                  {comment.content}
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      ))}
     </div>
   );
 
@@ -203,14 +221,14 @@ export function ThreadDetail({ thread, comments }: ThreadDetailProps) {
         </TabsList>
         <TabsContent value="discussion" className="mt-4">
           <div className="space-y-4">
-            {comments.map((comment) => renderComment(comment))}
+            {posts.map((post) => renderPost(post))}
             
             {canPost ? (
               <Card className="p-4">
                 <h3 className="text-lg font-semibold mb-4">Post a Reply</h3>
                 <TiptapEditor
-                  content={replyContent}
-                  onChange={setReplyContent}
+                  content={postContent}
+                  onChange={setPostContent}
                 />
                 <div className="flex justify-end mt-4">
                   <Button>Post Reply</Button>

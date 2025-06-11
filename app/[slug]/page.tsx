@@ -4,7 +4,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-config';
 import { HomePage } from '../components/pages/home-page';
 import { ServersPage } from '../components/pages/servers-page';
-import { AboutPage } from '../components/pages/about-page';
 import { ContactPage } from '../components/pages/contact-page';
 import { DynamicPage } from '../components/pages/dynamic-page';
 import { PageWrapperClient } from "@/components/page-wrapper-client"

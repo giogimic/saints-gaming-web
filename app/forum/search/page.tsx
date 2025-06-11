@@ -1,105 +1,141 @@
-import { Suspense } from 'react';
-import { prisma } from '@/lib/prisma';
-import { ThreadList } from '@/components/forum/thread-list';
-import { Search } from '@/components/forum/search';
-import { notFound } from 'next/navigation';
+"use client";
 
-interface SearchPageProps {
-  searchParams: {
-    q?: string;
-    page?: string;
-    sort?: string;
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { formatDistanceToNow } from 'date-fns';
+
+interface Thread {
+  id: string;
+  title: string;
+  content: string;
+  author: {
+    id: string;
+    name: string;
+    avatar: string;
   };
+  createdAt: string;
+  updatedAt: string;
+  category: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  posts: {
+    _count: number;
+  };
+  views: number;
+  isPinned: boolean;
+  isLocked: boolean;
 }
 
-async function searchThreads(query: string, page: number, sortBy: string) {
-  const pageSize = 10;
-  const skip = (page - 1) * pageSize;
+const sortOptions = {
+  newest: { createdAt: 'desc' },
+  oldest: { createdAt: 'asc' },
+  mostViews: { views: 'desc' },
+  mostPosts: { posts: { _count: 'desc' } },
+};
 
-  const orderBy = {
-    latest: { updatedAt: 'desc' },
-    created: { createdAt: 'desc' },
-    replies: { posts: { _count: 'desc' } },
-  }[sortBy] || { updatedAt: 'desc' };
+export default function SearchPage() {
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') || '');
+  const [sortBy, setSortBy] = useState('newest');
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const [threads, total] = await Promise.all([
-    prisma.thread.findMany({
-      where: {
-        OR: [
-          { title: { contains: query, mode: 'insensitive' } },
-          { content: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      orderBy,
-      skip,
-      take: pageSize,
-      include: {
-        author: {
-          select: {
-            username: true,
-          },
-        },
-        category: {
-          select: {
-            slug: true,
-          },
-        },
-        _count: {
-          select: { posts: true },
-        },
-      },
-    }),
-    prisma.thread.count({
-      where: {
-        OR: [
-          { title: { contains: query, mode: 'insensitive' } },
-          { content: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-    }),
-  ]);
+  const handleSearch = async () => {
+    if (!query.trim()) return;
 
-  return {
-    threads,
-    totalPages: Math.ceil(total / pageSize),
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/forum/search?q=${encodeURIComponent(query)}&sort=${sortBy}`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to search threads');
+      }
+      const data = await response.json();
+      setThreads(data);
+    } catch (error) {
+      console.error('Error searching threads:', error);
+    } finally {
+      setLoading(false);
+    }
   };
-}
 
-export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const query = searchParams.q;
-  const page = Number(searchParams.page) || 1;
-  const sortBy = searchParams.sort || 'latest';
-
-  if (!query) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl font-bold mb-8">Search Forum</h1>
-          <Search />
-        </div>
-      </div>
-    );
-  }
-
-  const { threads, totalPages } = await searchThreads(query, page, sortBy);
+  useEffect(() => {
+    if (query) {
+      handleSearch();
+    }
+  }, [query, sortBy]);
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold">Search Results</h1>
-          <Search />
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8">Search Forum</h1>
+
+        <div className="flex gap-4 mb-8">
+          <Input
+            type="text"
+            placeholder="Search threads..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="flex-1"
+          />
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="oldest">Oldest</SelectItem>
+              <SelectItem value="mostViews">Most Views</SelectItem>
+              <SelectItem value="mostPosts">Most Posts</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <Suspense fallback={<div>Loading results...</div>}>
-          <ThreadList
-            threads={threads}
-            currentPage={page}
-            totalPages={totalPages}
-            categorySlug="search"
-            sortBy={sortBy}
-          />
-        </Suspense>
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {threads.map((thread) => (
+              <Card key={thread.id}>
+                <CardHeader>
+                  <CardTitle>
+                    <Link href={`/forum/thread/${thread.id}`} className="hover:text-[var(--primary)]">
+                      {thread.title}
+                    </Link>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4 text-sm text-[var(--text-secondary)]">
+                    <span>Posted by {thread.author.name}</span>
+                    <span>•</span>
+                    <span>{formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true })}</span>
+                    <span>•</span>
+                    <span>{thread.views} views</span>
+                    <span>•</span>
+                    <span>{thread.posts._count} posts</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {!loading && threads.length === 0 && query && (
+              <div className="text-center py-8">
+                <p className="text-[var(--text-secondary)]">No threads found matching your search.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

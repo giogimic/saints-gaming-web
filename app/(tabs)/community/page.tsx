@@ -33,10 +33,8 @@ export default function CommunityPage() {
         throw new Error('Failed to fetch users');
       }
       const data = await response.json();
-      console.log('Fetched users:', data); // Debug log
       setUsers(data);
     } catch (error) {
-      console.error('Error fetching users:', error);
       setError('Failed to load users');
       toast({
         title: 'Error',
@@ -49,17 +47,17 @@ export default function CommunityPage() {
   };
 
   const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchQuery.toLowerCase())
+    (user.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (user.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (user.role?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 bg-[var(--background)] min-h-screen">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-red-500 mb-4">{error}</h2>
-          <Button onClick={fetchUsers}>Try Again</Button>
+          <Button onClick={fetchUsers} className="btn-primary">Try Again</Button>
         </div>
       </div>
     );
@@ -67,53 +65,53 @@ export default function CommunityPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 bg-[var(--background)] min-h-screen">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Loading...</h2>
+          <h2 className="text-2xl font-bold mb-4 text-[var(--primary)]">Loading...</h2>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 bg-[var(--background)] min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Community</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold text-[var(--primary)] font-heading">Community</h1>
+          <p className="text-[var(--text-secondary)] mt-1 font-body">
             Connect with fellow gamers and join our community
           </p>
         </div>
         <div className="relative w-full md:w-auto">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--accent-light)] h-4 w-4" />
           <Input
             placeholder="Search members..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 w-full md:w-[300px]"
+            className="pl-9 w-full md:w-[300px] input-base"
           />
         </div>
       </div>
 
       {filteredUsers.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-muted-foreground">No users found</p>
+          <p className="text-[var(--text-muted)]">No users found</p>
         </div>
       ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredUsers.map((user) => {
-              const gravatarUrl = `https://www.gravatar.com/avatar/${md5(user.email)}?d=identicon&s=200`;
-              return (
-                <Card key={user.id}>
-                  <CardHeader>
-                    <div className="flex items-center gap-4">
-                    <img 
-                      src={user.avatar || gravatarUrl} 
-                      alt={user.name} 
-                      className="w-16 h-16 rounded-full object-cover"
+            const gravatarUrl = `https://www.gravatar.com/avatar/${md5(user.email || user.id || '')}?d=identicon&s=200`;
+            return (
+              <Card key={user.id} className="card-base">
+                <CardHeader className="card-header">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={user.avatar || gravatarUrl}
+                      alt={user.name}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-[var(--primary)]"
                     />
-                      <div>
-                      <CardTitle className="flex items-center gap-2">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-[var(--primary)] font-heading">
                         {user.name}
                         <Badge variant={
                           user.role === 'admin' ? 'destructive' :
@@ -123,42 +121,42 @@ export default function CommunityPage() {
                           {user.role}
                         </Badge>
                       </CardTitle>
-                        <CardDescription>{user.email}</CardDescription>
-                      </div>
+                      <CardDescription className="text-[var(--text-secondary)] font-body">{user.email}</CardDescription>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  </div>
+                </CardHeader>
+                <CardContent className="card-content">
+                  <p className="text-sm text-[var(--text-muted)] mb-4 font-body">
                     {user.bio || "No bio provided."}
                   </p>
-                      <div className="space-y-2">
+                  <div className="space-y-2">
                     {user.steamId && (
-                      <a 
+                      <a
                         href={`https://steamcommunity.com/profiles/${user.steamId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-blue-500 hover:underline"
+                        className="flex items-center gap-2 text-sm text-[#50C878] hover:underline"
                       >
                         <span className="text-[#171a21]">Steam</span>
                         Profile
-                          </a>
-                        )}
+                      </a>
+                    )}
                     {user.discordId && (
-                      <a 
+                      <a
                         href={`https://discord.com/users/${user.discordId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-blue-500 hover:underline"
+                        className="flex items-center gap-2 text-sm text-[#008080] hover:underline"
                       >
                         <span className="text-[#5865F2]">Discord</span>
-                          </a>
-                        )}
+                      </a>
+                    )}
                     {user.twitchId && (
-                      <a 
+                      <a
                         href={`https://twitch.tv/${user.twitchId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-blue-500 hover:underline"
+                        className="flex items-center gap-2 text-sm text-[#9932CC] hover:underline"
                       >
                         <span className="text-[#9146FF]">Twitch</span>
                       </a>
@@ -169,23 +167,23 @@ export default function CommunityPage() {
                         href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-blue-500 hover:underline"
+                        className="flex items-center gap-2 text-sm text-[var(--accent)] hover:underline"
                       >
                         {link.platform}
-                          </a>
+                      </a>
                     ))}
-                      </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Link href={`/profile/${user.id}`} className="w-full">
-                      <Button variant="outline" className="w-full">View Profile</Button>
-                    </Link>
-                  </CardFooter>
-                </Card>
-              );
-            })}
-                    </div>
-                  )}
+                  </div>
+                </CardContent>
+                <CardFooter className="bg-[var(--primary-dark)]">
+                  <Link href={`/profile/${user.id}`} className="w-full">
+                    <Button variant="outline" className="btn-primary w-full">View Profile</Button>
+                  </Link>
+                </CardFooter>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 } 

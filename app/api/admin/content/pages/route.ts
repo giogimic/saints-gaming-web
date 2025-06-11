@@ -3,216 +3,384 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth-config"
 import prisma from "@/lib/prisma"
 import { z } from "zod"
-import { Session } from "next-auth"
-import { Prisma } from "@prisma/client"
+import { UserRole, Permission } from "@/lib/permissions"
+import { hasPermission } from "@/lib/permissions"
+import { pageContentSchema } from "@/lib/validations/content"
 
-const pageSchema = z.object({
-  title: z.string().min(1).max(100),
-  slug: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
-  template: z.string().optional(),
-  isPublished: z.boolean().optional(),
-  metadata: z.record(z.any()).optional(),
-  parentId: z.string().nullable().optional(),
+// Define content structure schemas
+const contentFieldSchema = z.object({
+  content: z.string(),
 });
 
-export async function GET() {
-  const session = await getServerSession(authOptions) as Session | null
+const pageSchema = z.object({
+  slug: z.string(),
+  title: z.string(),
+  content: z.string(),
+});
 
-  if (!session?.user || session.user.role !== "admin") {
-    return new NextResponse("Unauthorized", { status: 401 })
+const ContentSchema = z.object({
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+  content: z.any(), // Allow any content type
+});
+
+// Helper function to check admin access
+async function requireAdmin() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return { error: "Unauthorized", status: 401 };
   }
 
-  try {
-    const pages = await prisma.page.findMany({
-      include: {
-        _count: {
-          select: {
-            blocks: true,
-          },
-        },
-        parent: {
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-          },
-        },
-        children: {
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-          },
-        },
-      },
-      orderBy: [
-        {
-          parentId: 'asc',
-        },
-        {
-          createdAt: 'desc',
-        },
-      ],
-    })
+  const hasEditPermission = hasPermission(session.user.role as UserRole, "edit:page");
+  if (!hasEditPermission) {
+    return { error: "Forbidden", status: 403 };
+  }
 
-    return NextResponse.json(pages)
-  } catch (error) {
-    console.error("[PAGES_GET]", error)
-    return new NextResponse("Internal error", { status: 500 })
+  return { session };
+}
+
+// Helper function to create default content
+function createDefaultContent(slug: string) {
+  const defaultContent = {
+    title: { content: slug.charAt(0).toUpperCase() + slug.slice(1) },
+    description: { content: `Welcome to our ${slug} page` },
+  };
+
+  // Add specific defaults based on page type
+  if (slug === "about") {
+    return {
+      ...defaultContent,
+      mission: { content: "Our mission is to create an inclusive gaming community" },
+      values: { content: "We value respect, inclusivity, and fair play" },
+    };
+  }
+
+  if (slug === "games") {
+    return {
+      ...defaultContent,
+      games: {
+        content: [
+          {
+            title: "Game 1",
+            description: "Description for Game 1",
+          },
+          {
+            title: "Game 2",
+            description: "Description for Game 2",
+          },
+        ],
+      },
+    };
+  }
+
+  return defaultContent;
+}
+
+// Helper function to validate and parse content
+function validateAndParseContent(content: string, slug: string) {
+  try {
+    const parsed = JSON.parse(content);
+    const validated = pageContentSchema.parse(parsed);
+    return { data: validated };
+  } catch (e) {
+    console.error("Error parsing/validating content:", e);
+    if (e instanceof z.ZodError) {
+      return { error: "Validation error", details: e.errors };
+    }
+    return { error: "Invalid content format" };
   }
 }
 
-export async function POST(req: Request) {
-  const session = await getServerSession(authOptions) as Session | null
-
-  if (!session?.user || session.user.role !== "admin") {
-    return new NextResponse("Unauthorized", { status: 401 })
-  }
-
+export async function GET(request: Request) {
   try {
-    const body = await req.json()
-    const validatedData = pageSchema.parse(body)
+    const { searchParams } = new URL(request.url);
+    const slug = searchParams.get("slug");
 
-    const pageData: Prisma.PageUncheckedCreateInput = {
-      ...validatedData,
-      createdById: session.user.id,
-      metadata: validatedData.metadata || {},
-    }
-
-    const page = await prisma.page.create({
-      data: pageData,
-      include: {
-        parent: {
-          select: {
-            id: true,
-            title: true,
-            slug: true,
+    if (!slug) {
+      return NextResponse.json(
+        { error: "Slug parameter is required" },
+        { 
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
           },
-        },
-      },
-    })
-
-    return NextResponse.json(page)
-  } catch (error) {
-    console.error("[PAGES_POST]", error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
-        { status: 400 }
-      )
-    }
-    return new NextResponse("Internal error", { status: 500 })
-  }
-}
-
-export async function PATCH(req: Request) {
-  const session = await getServerSession(authOptions) as Session | null
-
-  if (!session?.user || session.user.role !== "admin") {
-    return new NextResponse("Unauthorized", { status: 401 })
-  }
-
-  try {
-    const body = await req.json()
-    const { id, ...data } = body
-
-    if (!id) {
-      return NextResponse.json(
-        { error: "Page ID is required" },
-        { status: 400 }
-      )
+        }
+      );
     }
 
+    // Get the page and its latest content revision
     const page = await prisma.page.findUnique({
-      where: { id }
-    })
+      where: { slug },
+      include: {
+        contentRevisions: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+    });
 
     if (!page) {
-      return NextResponse.json(
-        { error: "Page not found" },
-        { status: 404 }
-      )
+      // Return default content for new pages
+      return NextResponse.json({
+        content: {
+          title: "Welcome",
+          subtitle: "Get started by editing this page",
+          content: "Add your content here",
+        },
+      }, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
     }
 
-    const validatedData = pageSchema.parse(data)
-    const updatedPage = await prisma.page.update({
-      where: { id },
+    const latestRevision = page.contentRevisions[0];
+    if (!latestRevision) {
+      return NextResponse.json(
+        { error: "No content found" },
+        { 
+          status: 404,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    // Parse the content JSON
+    let content;
+    try {
+      // If the content is already an object, use it directly
+      if (typeof latestRevision.content === 'object') {
+        content = latestRevision.content;
+      } else {
+        // Otherwise, try to parse it as JSON
+        content = JSON.parse(latestRevision.content as string);
+      }
+    } catch (e) {
+      console.error("Error parsing content:", e);
+      return NextResponse.json(
+        { error: "Invalid content format" },
+        { 
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    return NextResponse.json({ content }, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    console.error("Error in GET /api/admin/content/pages:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { 
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { 
+          status: 401,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    const body = await request.json();
+    const { slug, content } = body;
+
+    if (!slug || !content) {
+      return NextResponse.json(
+        { error: "Slug and content are required" },
+        { 
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    // Validate content structure
+    let parsedContent;
+    try {
+      parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
+      ContentSchema.parse(parsedContent);
+    } catch (e) {
+      console.error("Content validation error:", e);
+      return NextResponse.json(
+        { error: "Invalid content format" },
+        { 
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    // Get or create the page
+    let page = await prisma.page.findUnique({
+      where: { slug },
+    });
+
+    if (!page) {
+      page = await prisma.page.create({
+        data: {
+          slug,
+          title: "New Page",
+          content: "{}",
+          description: "",
+          createdById: session.user.id,
+        },
+      });
+    }
+
+    // Create a new content revision
+    const contentRevision = await prisma.contentRevision.create({
       data: {
-        ...validatedData,
-        metadata: validatedData.metadata || {},
+        content: parsedContent,
+        pageId: page.id,
+        createdById: session.user.id,
       },
-      include: {
-        parent: {
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-          },
-        },
-      },
-    })
+    });
 
-    return NextResponse.json(updatedPage)
+    return NextResponse.json({
+      content: parsedContent,
+      revision: contentRevision,
+    }, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
   } catch (error) {
-    console.error("[PAGES_PATCH]", error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
-        { status: 400 }
-      )
-    }
-    return new NextResponse("Internal error", { status: 500 })
+    console.error("Error in POST /api/admin/content/pages:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { 
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
   }
 }
 
-export async function DELETE(req: Request) {
-  const session = await getServerSession(authOptions) as Session | null
-
-  if (!session?.user || session.user.role !== "admin") {
-    return new NextResponse("Unauthorized", { status: 401 })
+export async function PATCH(request: Request) {
+  const auth = await requireAdmin();
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   try {
-    const { searchParams } = new URL(req.url)
-    const id = searchParams.get("id")
+    const body = await request.json();
+    const { slug, updates } = body;
 
-    if (!id) {
+    if (!slug || !updates) {
       return NextResponse.json(
-        { error: "Page ID is required" },
+        { error: "Missing required fields" },
         { status: 400 }
-      )
+      );
     }
 
     const page = await prisma.page.findUnique({
-      where: { id },
-      include: {
-        children: true,
-      },
-    })
+      where: { slug },
+    });
 
     if (!page) {
-      return NextResponse.json(
-        { error: "Page not found" },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Page not found" }, { status: 404 });
     }
 
-    // Check if page has children
-    if (page.children.length > 0) {
+    // Merge existing content with updates
+    const existingContent = JSON.parse(page.content);
+    const updatedContent = { ...existingContent, ...updates };
+
+    const validation = validateAndParseContent(
+      JSON.stringify(updatedContent),
+      slug
+    );
+    if ("error" in validation) {
       return NextResponse.json(
-        { error: "Cannot delete page with child pages. Please delete or reassign child pages first." },
+        { error: validation.error, details: validation.details },
+        { status: 400 }
+      );
+    }
+
+    const updatedPage = await prisma.page.update({
+      where: { slug },
+      data: {
+        content: JSON.stringify(updatedContent),
+      },
+    });
+
+    // Create revision
+    await prisma.contentRevision.create({
+      data: {
+        pageId: page.id,
+        content: updatedContent,
+        createdById: auth.session.user.id,
+      },
+    });
+
+    return NextResponse.json({ content: updatedPage.content });
+  } catch (error) {
+    console.error("Error updating page:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    await requireAdmin();
+
+    const { searchParams } = new URL(request.url)
+    const pageSlug = searchParams.get("slug")
+
+    if (!pageSlug) {
+      return NextResponse.json(
+        { error: "Slug is required" },
         { status: 400 }
       )
     }
 
     await prisma.page.delete({
-      where: { id }
+      where: { slug: pageSlug },
     })
 
-    return new NextResponse(null, { status: 204 })
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[PAGES_DELETE]", error)
-    return new NextResponse("Internal error", { status: 500 })
+    console.error("Error in DELETE /api/admin/content/pages:", error)
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
   }
 } 

@@ -30,6 +30,14 @@ export function MainNav() {
       label: 'Games',
     },
     {
+      href: '/servers',
+      label: 'Servers',
+    },
+    {
+      href: '/modpacks',
+      label: 'Modpacks',
+    },
+    {
       href: '/forum',
       label: 'Forum',
     },
@@ -49,7 +57,13 @@ export function MainNav() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center space-x-2">
-              <Image src="/saintsgaming-logo.png" alt="Saints Gaming Logo" width={48} height={48} className="rounded" />
+              <img 
+                src="/imgs/saintsgaming-logo.png" 
+                alt="Saints Gaming Logo" 
+                width={32} 
+                height={32} 
+                className="rounded"
+              />
               <span className="text-xl font-bold">SaintsGaming</span>
             </Link>
             <nav className="hidden md:flex items-center space-x-6">
