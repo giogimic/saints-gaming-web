@@ -1,129 +1,194 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-config';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { z } from 'zod';
+import { handleForumError, validateThreadInput, ForumError } from '@/lib/forum-error-handler';
+import slugify from 'slugify';
 
-const threadSchema = z.object({
-  title: z.string().min(1).max(200),
-  content: z.string().min(1),
-  categoryId: z.string(),
-});
-
-// Mock data - replace with actual database queries
-const threads = [
-  {
-    id: '1',
-    title: 'Welcome to Saints Gaming!',
-    content: 'Welcome to our community forum. Feel free to introduce yourself!',
-    author: {
-      id: '1',
-      name: 'Admin',
-      avatar: '/saintsgaming-logo.png'
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    categoryId: '1',
-    posts: 5,
-    views: 100
-  },
-  {
-    id: '2',
-    title: 'Server Rules and Guidelines',
-    content: 'Please read our server rules before joining.',
-    author: {
-      id: '1',
-      name: 'Admin',
-      avatar: '/saintsgaming-logo.png'
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    categoryId: '1',
-    posts: 2,
-    views: 50
-  }
-];
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const threads = await prisma.thread.findMany({
+    const { searchParams } = new URL(request.url);
+    const categoryId = searchParams.get('categoryId');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const skip = (page - 1) * limit;
+
+    const where = categoryId ? { categoryId } : {};
+
+    const [threads, total] = await Promise.all([
+      prisma.thread.findMany({
+        where,
       include: {
         author: {
-          select: { id: true, name: true, avatar: true }
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
         },
-        category: {
-          select: { id: true, name: true }
-        },
-        posts: {
-          select: { id: true }
-        }
+          category: true,
+          _count: {
+            select: {
+              posts: true,
+            },
+          },
       },
       orderBy: [
         { isPinned: 'desc' },
-        { createdAt: 'desc' }
-      ]
+          { lastPostAt: 'desc' },
+        ],
+        skip,
+        take: limit,
+      }),
+      prisma.thread.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      threads,
+      pagination: {
+        total,
+        pages: Math.ceil(total / limit),
+        current: page,
+      },
     });
-
-    // Transform the data to include post count
-    const threadsWithCounts = threads.map(thread => ({
-      ...thread,
-      posts: thread.posts.length,
-      views: thread.views
-    }));
-
-    return NextResponse.json(threadsWithCounts);
   } catch (error) {
-    console.error('[THREADS_GET]', error);
-    return new NextResponse('Internal error', { status: 500 });
+    return handleForumError(error);
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session?.user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      throw new ForumError('Unauthorized', 401);
     }
 
-    const body = await req.json();
-    const result = threadSchema.safeParse(body);
+    const data = await request.json();
+    const { title, content, categoryId } = validateThreadInput(data);
 
-    if (!result.success) {
-      return new NextResponse('Invalid input', { status: 400 });
-    }
+    // Generate slug
+    let slug = slugify(title, { lower: true, strict: true });
+    let counter = 1;
+    let uniqueSlug = slug;
 
-    const { title, content, categoryId } = result.data;
-
-    const category = await prisma.category.findUnique({
-      where: { id: categoryId },
-    });
-
-    if (!category) {
-      return new NextResponse('Category not found', { status: 404 });
+    // Ensure slug uniqueness
+    while (await prisma.thread.findUnique({ where: { slug: uniqueSlug } })) {
+      uniqueSlug = `${slug}-${counter}`;
+      counter++;
     }
 
     const thread = await prisma.thread.create({
       data: {
         title,
         content,
+        slug: uniqueSlug,
         authorId: session.user.id,
         categoryId,
-        views: 0
+        viewCount: 0,
       },
       include: {
         author: {
-          select: { id: true, name: true, avatar: true }
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
         },
-        category: {
-          select: { id: true, name: true }
-        }
-      }
+        category: true,
+      },
     });
 
     return NextResponse.json(thread);
   } catch (error) {
-    console.error('Error creating thread:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return handleForumError(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      throw new ForumError('Unauthorized', 401);
+    }
+
+    const data = await request.json();
+    const { id, title, content, categoryId } = data;
+
+    if (!id) {
+      throw new ForumError('Thread ID is required', 400);
+    }
+
+    const thread = await prisma.thread.findUnique({
+      where: { id },
+      include: { author: true },
+    });
+
+    if (!thread) {
+      throw new ForumError('Thread not found', 404);
+    }
+
+    if (thread.authorId !== session.user.id) {
+      throw new ForumError('Not authorized to edit this thread', 403);
+    }
+
+    const updatedThread = await prisma.thread.update({
+      where: { id },
+      data: {
+        title,
+        content,
+        categoryId,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+        category: true,
+      },
+    });
+
+    return NextResponse.json(updatedThread);
+  } catch (error) {
+    return handleForumError(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      throw new ForumError('Unauthorized', 401);
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      throw new ForumError('Thread ID is required', 400);
+    }
+
+    const thread = await prisma.thread.findUnique({
+      where: { id },
+      include: { author: true },
+    });
+
+    if (!thread) {
+      throw new ForumError('Thread not found', 404);
+    }
+
+    if (thread.authorId !== session.user.id) {
+      throw new ForumError('Not authorized to delete this thread', 403);
+    }
+
+    await prisma.thread.delete({
+      where: { id },
+    });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    return handleForumError(error);
   }
 } 

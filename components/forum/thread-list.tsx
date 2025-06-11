@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThreadForm } from "./thread-form";
 import { SelectItem } from "@/components/ui/select";
+import { ThreadTags } from "@/components/thread-tags";
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  icon?: string;
+}
 
 interface Thread {
   id: string;
@@ -21,6 +29,7 @@ interface Thread {
   categoryId: string;
   posts: number;
   views: number;
+  tags: Tag[];
 }
 
 interface ThreadListProps {
@@ -29,6 +38,7 @@ interface ThreadListProps {
 
 export function ThreadList({ categoryId }: ThreadListProps) {
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
@@ -47,9 +57,31 @@ export function ThreadList({ categoryId }: ThreadListProps) {
     }
   };
 
+  const fetchTags = async () => {
+    try {
+      const response = await fetch('/api/forum/tags');
+      if (!response.ok) {
+        throw new Error("Failed to fetch tags");
+      }
+      const data = await response.json();
+      setAllTags(data);
+    } catch (error) {
+      console.error("Error fetching tags:", error);
+    }
+  };
+
   useEffect(() => {
     fetchThreads();
+    fetchTags();
   }, [categoryId]);
+
+  const handleTagsChange = (threadId: string, newTags: Tag[]) => {
+    setThreads(prevThreads =>
+      prevThreads.map(thread =>
+        thread.id === threadId ? { ...thread, tags: newTags } : thread
+      )
+    );
+  };
 
   if (isLoading) {
     return <div>Loading threads...</div>;
@@ -86,13 +118,19 @@ export function ThreadList({ categoryId }: ThreadListProps) {
           <Card key={thread.id}>
             <CardContent className="p-4">
               <Link href={`/forum/thread/${thread.id}`}>
-                <div className="flex justify-between items-center">
-                  <div>
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2">
                     <h3 className="font-semibold">{thread.title}</h3>
                     <p className="text-sm text-muted-foreground">
                       Posted by {thread.author.name} on{" "}
                       {new Date(thread.createdAt).toLocaleDateString()}
                     </p>
+                    <ThreadTags
+                      threadId={thread.id}
+                      tags={thread.tags}
+                      allTags={allTags}
+                      onTagsChange={(newTags) => handleTagsChange(thread.id, newTags)}
+                    />
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {thread.posts} posts

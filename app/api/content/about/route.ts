@@ -6,6 +6,37 @@ import { authOptions } from "@/lib/auth-config";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
+    
+    // Get or create system user
+    let systemUser = await prisma.user.findFirst({
+      where: {
+        email: "system@saintsgaming.com",
+      },
+    });
+
+    if (!systemUser) {
+      try {
+        systemUser = await prisma.user.create({
+          data: {
+            email: "system@saintsgaming.com",
+            name: "System",
+            role: "admin",
+          },
+        });
+      } catch (error) {
+        // If creation fails, try to find the user again (in case of race condition)
+        systemUser = await prisma.user.findFirst({
+          where: {
+            email: "system@saintsgaming.com",
+          },
+        });
+        
+        if (!systemUser) {
+          throw new Error("Failed to create or find system user");
+        }
+      }
+    }
+
     const page = await prisma.page.findUnique({
       where: { slug: 'about' },
       select: {
@@ -23,66 +54,29 @@ export async function GET() {
           content: JSON.stringify({
             title: "About SaintsGaming",
             subtitle: "Your Premier Destination for Modded Multiplayer Gaming",
-            sections: [
-              {
-                id: "1",
-                title: "Our Mission",
-                content: "At SaintsGaming, we're dedicated to crafting exceptional modded multiplayer experiences that go beyond the ordinary. Our focus is on creating immersive, stable, and engaging environments where players can enjoy their favorite games with carefully curated mods that enhance gameplay without compromising performance.",
-                features: [
-                  "Curated Mod Collections",
-                  "Performance-Optimized Servers",
-                  "Active Community Management",
-                  "Regular Content Updates"
-                ]
-              },
-              {
-                id: "2",
-                title: "Our Servers",
-                content: "Experience gaming at its finest with our premium modded servers. Our ARK: Survival Ascended server features the Omega mod collection, offering an enhanced survival experience with new creatures, items, and mechanics. Our Minecraft server runs the custom SaintsGaming modpack, boasting over 400 carefully selected mods that transform the game into an epic adventure with Cobblemon integration.",
-                features: [
-                  "ARK: Survival Ascended — Omega Modded Experience",
-                  "Minecraft — 400+ Mods with Cobblemon",
-                  "High-Performance Hardware",
-                  "Automated Backups",
-                  "24/7 Active Moderation"
-                ]
-              },
-              {
-                id: "3",
-                title: "Our Modpacks",
-                content: "Discover our carefully crafted modpacks, each designed for a unique gaming experience. The SaintsGaming Modpack transforms Minecraft into an epic adventure with new dimensions, creatures, and mechanics. Dimensional Cobblemon brings the Pokémon experience to Minecraft with custom regions and features. Holy Crop! revolutionizes Stardew Valley with new crops, mechanics, and automation options.",
-                features: [
-                  "SaintsGaming Modpack — Epic Minecraft Adventure",
-                  "Dimensional Cobblemon — Pokémon in Minecraft",
-                  "Holy Crop! — Stardew Valley Enhanced",
-                  "Monthly Content Updates",
-                  "CurseForge Integration"
-                ]
-              },
-              {
-                id: "4",
-                title: "Join Our Community",
-                content: "Become part of our thriving gaming community! Our Discord server is the heart of SaintsGaming, where players connect, share experiences, and get instant support. Join us for regular community events, modpack assistance, and stay updated on server maintenance and new features. Your feedback shapes our future updates and improvements.",
-                features: [
-                  "Active Discord Community",
-                  "Weekly Community Events",
-                  "Expert Modpack Support",
-                  "Real-time Server Updates",
-                  "Community-Driven Development"
-                ]
-              }
-            ]
+            aboutTitle: "Our Story",
+            aboutContent: "SaintsGaming was founded with a simple mission: to create the best gaming community possible. We believe in providing high-quality servers, regular events, and a friendly environment for all players.",
+            missionTitle: "Our Mission",
+            missionContent: "To provide an exceptional gaming experience through high-performance servers, active community engagement, and continuous improvement.",
+            valuesTitle: "Our Values",
+            valuesContent: "Community, Quality, Innovation, and Fun are at the core of everything we do."
           }),
-          createdById: session?.user?.id || 'system',
+          createdById: systemUser.id,
           isPublished: true,
+          description: "About SaintsGaming page content",
+          template: "about"
         },
       });
+
       return NextResponse.json(newPage);
     }
 
     return NextResponse.json(page);
   } catch (error) {
     console.error("Error fetching about page:", error);
-    return NextResponse.json({ error: "Failed to fetch about page" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch about page", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
   }
 } 

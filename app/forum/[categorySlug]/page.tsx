@@ -26,16 +26,30 @@ interface Thread {
   id: string;
   title: string;
   content: string;
-  authorName: string;
-  createdAt: string;
+  slug: string;
+  author: {
+    id: string;
+    name: string | null;
+    image: string | null;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+  authorId: string;
+  categoryId: string;
   isPinned: boolean;
   isLocked: boolean;
+  isHidden: boolean;
   viewCount: number;
-  posts: Array<{
+  lastPostAt: Date;
+  _count?: {
+    posts: number;
+  };
+  tags?: Array<{
     id: string;
-    content: string;
-    authorName: string;
-    createdAt: string;
+    name: string;
+    slug: string;
+    color?: string;
+    icon?: string;
   }>;
 }
 

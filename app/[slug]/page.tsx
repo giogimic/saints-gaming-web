@@ -13,14 +13,16 @@ import { UserRole } from "@/lib/permissions";
 import { EditPageButton } from "@/components/edit-page-button";
 
 interface PageProps {
-  params: Promise<{ slug: string }>;
+  params: {
+    slug: string;
+  };
 }
 
 interface ContentBlock {
   id: string;
   type: string;
   content: string;
-  settings: Record<string, any>;
+  settings?: any;
   order: number;
 }
 
@@ -28,7 +30,7 @@ interface PageBlock {
   id: string;
   type: string;
   content: any;
-  settings: any;
+  settings?: any;
   order: number;
 }
 
@@ -82,6 +84,15 @@ export default async function Page({ params }: PageProps) {
     notFound();
   }
 
+  // Parse page content
+  let parsedContent;
+  try {
+    parsedContent = typeof page.content === 'string' ? JSON.parse(page.content) : page.content;
+  } catch (error) {
+    console.error('Error parsing page content:', error);
+    parsedContent = {};
+  }
+
   const blocks: ContentBlock[] = page.blocks.map((block: PageBlock) => ({
     id: block.id,
     type: block.type,
@@ -92,7 +103,7 @@ export default async function Page({ params }: PageProps) {
 
   return (
     <PageWrapperClient pageId={page.id}>
-      <ContentBlockManagerClient blocks={blocks} />
+      <ContentBlockManagerClient blocks={blocks} initialContent={parsedContent} />
     </PageWrapperClient>
   );
 } 

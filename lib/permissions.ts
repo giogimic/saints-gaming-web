@@ -31,6 +31,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'edit:comments',
     'delete:comments',
     'manage:content',
+    'view:hidden',
+    'manage:tags',
+    'tag:threads',
+    'tag:own_threads',
   ],
   [UserRole.MODERATOR]: [
     'view:forum',
@@ -45,6 +49,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'edit:comments',
     'delete:comments',
     'manage:content',
+    'view:hidden',
+    'manage:tags',
+    'tag:threads',
+    'tag:own_threads',
   ],
   [UserRole.USER]: [
     'view:forum',
@@ -52,6 +60,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'edit:own-post',
     'delete:own-post',
     'vote:post',
+    'tag:own_threads',
   ],
 };
 
@@ -70,7 +79,11 @@ export type Permission =
   | 'delete:posts'
   | 'edit:comments'
   | 'delete:comments'
-  | 'manage:content';
+  | 'manage:content'
+  | 'view:hidden'
+  | 'manage:tags'
+  | 'tag:threads'
+  | 'tag:own_threads';
 
 /**
  * Check if a user role has a specific permission
@@ -186,6 +199,10 @@ export const PERMISSIONS: Record<Permission, string> = {
   'edit:comments': 'Edit any comment',
   'delete:comments': 'Delete any comment',
   'manage:content': 'Manage all content',
+  'view:hidden': 'View hidden content',
+  'manage:tags': 'Manage forum tags',
+  'tag:threads': 'Tag any thread',
+  'tag:own_threads': 'Tag own threads',
 };
 
 export const canEditContent = (userRole: string | undefined): boolean => {

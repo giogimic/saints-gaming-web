@@ -1,181 +1,82 @@
-# Saints Gaming App
+# Saints Gaming Web
 
-A modern Next.js + shadcn/ui application for a gaming community, featuring server management, modpack distribution, and community features.
-
-## Features
-
-- 🎮 Modern UI with glass-morphism and gradient effects
-- 🔐 Authentication (Email/Password, Steam)
-- 👤 User profiles with activity tracking
-- 🎮 Game server management
-- 📦 Modpack distribution
-- 💬 Community features
-- ✍️ Rich text editor for content
-- 🔍 Advanced search functionality
-- 📊 Admin dashboard
-- 📱 Responsive design
-- 🎨 Customizable themes
-- ⚡ Performance optimized
-- 🔄 Real-time updates
-- 🎯 Command palette navigation
-- 💫 Smooth animations and transitions
+A modern web application for Saints Gaming community.
 
 ## Tech Stack
 
-- Next.js 15.3.3 (App Router)
-- React 19.1.0
-- TypeScript 5.3.3
-- Tailwind CSS 3.4.1
+- Next.js 13+ (App Router)
+- React 18
+- TypeScript
+- Tailwind CSS
+- Prisma (MariaDB)
+- NextAuth.js
 - shadcn/ui
-- Prisma (SQLite)
-- NextAuth.js 4.24.7
-- Framer Motion
-- TipTap (Rich Text Editor)
-- ProseMirror
-- Radix UI
-- Lucide Icons
+- Bun
+
+## Features
+
+- Modern UI with dark mode support
+- Server-side rendering
+- Type-safe database queries
+- Authentication with multiple providers
+- Forum system
+- News and announcements
+- Server status monitoring
+- User profiles
+- Admin dashboard
 
 ## Prerequisites
 
-- Node.js 18.17 or later
-- pnpm 8.0 or later
-- SQLite 3
+- Node.js 18+ or Bun
+- MariaDB 10.6+
+- pnpm
 
 ## Getting Started
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/saintsgaming-app.git
-cd saintsgaming-app
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
 
-# Install dependencies
-pnpm install
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` with your database credentials and other settings.
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your configuration
+4. Run migrations:
+   ```bash
+   pnpm run migrate
+   ```
 
-# Initialize the database
-pnpm prisma generate
-pnpm prisma migrate dev
-pnpm prisma db seed
+5. Start the development server:
+   ```bash
+   pnpm run dev
+   ```
 
-# Create an admin user
-pnpm create-admin
+## Database
 
-# Start the development server
-pnpm dev
-```
-
-## Required UI Components
-
-Install these shadcn/ui components:
-
-```bash
-# Core components
-pnpm dlx shadcn-ui@latest add button
-pnpm dlx shadcn-ui@latest add input
-pnpm dlx shadcn-ui@latest add card
-pnpm dlx shadcn-ui@latest add tabs
-pnpm dlx shadcn-ui@latest add avatar
-pnpm dlx shadcn-ui@latest add dropdown-menu
-pnpm dlx shadcn-ui@latest add toast
-pnpm dlx shadcn-ui@latest add alert-dialog
-pnpm dlx shadcn-ui@latest add select
-pnpm dlx shadcn-ui@latest add hover-card
-pnpm dlx shadcn-ui@latest add command
-pnpm dlx shadcn-ui@latest add tooltip
-pnpm dlx shadcn-ui@latest add scroll-area
-pnpm dlx shadcn-ui@latest add separator
-pnpm dlx shadcn-ui@latest add slider
-pnpm dlx shadcn-ui@latest add switch
-```
-
-## Environment Variables
-
-Required environment variables:
-
-```env
-# Database
-DATABASE_URL="file:./dev.db"
-
-# NextAuth
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-key"
-
-# Steam Auth (optional)
-STEAM_API_KEY="your-steam-api-key"
-
-# Site Settings
-NEXT_PUBLIC_SITE_NAME="Saints Gaming"
-NEXT_PUBLIC_SITE_DESCRIPTION="Your Premier Modded Gaming Community"
-```
-
-## Project Structure
-
-```
-├── app/                 # Next.js app directory
-│   ├── api/            # API routes
-│   ├── admin/          # Admin pages
-│   ├── auth/           # Authentication pages
-│   ├── (tabs)/         # Main app tabs
-│   └── components/     # App-specific components
-├── components/         # React components
-│   ├── ui/            # UI components
-│   └── shared/        # Shared components
-├── lib/               # Utility functions
-│   ├── auth.ts       # Authentication utilities
-│   ├── prisma.ts     # Database client
-│   └── utils.ts      # Helper functions
-├── prisma/            # Database schema
-│   ├── schema.prisma  # Database schema
-│   ├── migrations/    # Database migrations
-│   └── seed.ts       # Seed data
-└── public/            # Static assets
-```
+The application uses MariaDB as its database. Make sure you have MariaDB installed and running before starting the application.
 
 ## Development
 
-- Run `pnpm dev` for development
-- Run `pnpm build` to create a production build
-- Run `pnpm start` to start the production server
-- Run `pnpm lint` to check for linting issues
-- Run `pnpm format` to format code
-
-## Database Management
-
-```bash
-# Generate Prisma Client
-pnpm prisma generate
-
-# Push schema changes to database
-pnpm prisma migrate dev
-
-# Seed the database
-pnpm prisma db seed
-
-# Open Prisma Studio
-pnpm prisma studio
-```
-
-## Content Management
-
-The app includes a content management system for:
-- Game server information
-- Modpack details
-- Community news
-- User profiles
-- Site settings
-
-Each content type has its own API route and management interface.
+- `pnpm run dev` - Start development server
+- `pnpm run build` - Build for production
+- `pnpm run start` - Start production server
+- `pnpm run lint` - Run ESLint
+- `pnpm run migrate` - Run database migrations
+- `pnpm run backup` - Backup database
+- `pnpm run restore` - Restore database from backup
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-## 📝 License
-MIT
+## License
+
+This project is licensed under the MIT License.

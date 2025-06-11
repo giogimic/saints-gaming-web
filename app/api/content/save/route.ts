@@ -33,21 +33,23 @@ export async function POST(request: Request) {
           id: existingPage.id,
         },
         data: {
-          content: JSON.stringify(content),
+          content: typeof content === 'string' ? content : JSON.stringify(content),
           updatedAt: new Date(),
         },
       });
 
       return NextResponse.json(updatedPage);
-    } else {
-      // Get or create a system user for content creation
-      let systemUser = await prisma.user.findFirst({
-        where: {
-          email: "system@saintsgaming.com",
-        },
-      });
+    }
 
-      if (!systemUser) {
+    // Get or create a system user for content creation
+    let systemUser = await prisma.user.findFirst({
+      where: {
+        email: "system@saintsgaming.com",
+      },
+    });
+
+    if (!systemUser) {
+      try {
         systemUser = await prisma.user.create({
           data: {
             email: "system@saintsgaming.com",
@@ -55,27 +57,38 @@ export async function POST(request: Request) {
             role: "admin",
           },
         });
+      } catch (error) {
+        // If creation fails, try to find the user again (in case of race condition)
+        systemUser = await prisma.user.findFirst({
+          where: {
+            email: "system@saintsgaming.com",
+          },
+        });
+        
+        if (!systemUser) {
+          throw new Error("Failed to create or find system user");
+        }
       }
-
-      // Create new page
-      const newPage = await prisma.page.create({
-        data: {
-          slug: pageId,
-          title: pageId.charAt(0).toUpperCase() + pageId.slice(1),
-          content: JSON.stringify(content),
-          createdById: systemUser.id,
-          isPublished: true,
-          description: `${pageId} page content`,
-          template: "default"
-        },
-      });
-
-      return NextResponse.json(newPage);
     }
+
+    // Create new page
+    const newPage = await prisma.page.create({
+      data: {
+        slug: pageId,
+        title: pageId.charAt(0).toUpperCase() + pageId.slice(1),
+        content: typeof content === 'string' ? content : JSON.stringify(content),
+        createdById: systemUser.id,
+        isPublished: true,
+        description: `${pageId} page content`,
+        template: "default"
+      },
+    });
+
+    return NextResponse.json(newPage);
   } catch (error) {
     console.error("Error saving content:", error);
     return NextResponse.json(
-      { error: "Failed to save content" },
+      { error: "Failed to save content", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
   }

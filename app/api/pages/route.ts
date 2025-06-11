@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/auth-config";
 
 const DEFAULT_HOME_CONTENT = {
   heroTitle: { content: 'Welcome to Saints Gaming' },
@@ -46,16 +46,34 @@ export async function GET(request: Request) {
     
     if (!page) {
       // Get or create a system user for default pages
-      const systemUser = await prisma.user.upsert({
-        where: { email: 'system@saintsgaming.com' },
-        update: {},
-        create: {
-          email: 'system@saintsgaming.com',
-          name: 'System',
-          role: 'admin',
+      let systemUser = await prisma.user.findFirst({
+        where: {
+          email: "system@saintsgaming.com",
         },
       });
-      console.log('System user:', systemUser);
+
+      if (!systemUser) {
+        try {
+          systemUser = await prisma.user.create({
+            data: {
+              email: "system@saintsgaming.com",
+              name: "System",
+              role: "admin",
+            },
+          });
+        } catch (error) {
+          // If creation fails, try to find the user again (in case of race condition)
+          systemUser = await prisma.user.findFirst({
+            where: {
+              email: "system@saintsgaming.com",
+            },
+          });
+          
+          if (!systemUser) {
+            throw new Error("Failed to create or find system user");
+          }
+        }
+      }
 
       // Create a default page if it doesn't exist
       const defaultContent = {
@@ -93,6 +111,8 @@ export async function GET(request: Request) {
           content: JSON.stringify(defaultContent),
           isPublished: true,
           createdById: systemUser.id,
+          description: `${slug} page content`,
+          template: "default"
         },
       });
       console.log('Created page:', page);
@@ -137,6 +157,8 @@ export async function POST(request: Request) {
         content: typeof content === 'string' ? content : JSON.stringify(content),
         isPublished: true,
         createdById: session.user.id,
+        description: `${slug} page content`,
+        template: "default"
       },
     });
 

@@ -1,0 +1,39 @@
+[install]
+# Use exact versions for better reproducibility
+exact = true
+# Enable hoisting for better performance
+hoistingLimits = "workspaces"
+# Use the fastest registry
+registry = "https://registry.npmjs.org/"
+
+[install.cache]
+# Enable caching for faster installations
+dir = ".bun/cache"
+# Cache dependencies for 7 days
+ttl = 604800
+
+[install.scopes]
+# Configure scopes for better performance
+"@radix-ui" = "https://registry.npmjs.org/"
+"@tiptap" = "https://registry.npmjs.org/"
+
+[test]
+# Configure test settings
+coverage = true
+preload = ["./test/setup.ts"]
+
+[debug]
+# Enable source maps for better debugging
+sourcemap = true
+
+[build]
+# Optimize build settings
+minify = true
+target = "browser"
+entrypoints = ["./app/**/*.{ts,tsx}"]
+
+[dev]
+# Development server settings
+port = 3000
+hostname = "localhost"
+hot = true 

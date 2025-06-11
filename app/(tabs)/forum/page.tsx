@@ -107,7 +107,7 @@ export default function ForumPage() {
         activityRes.json()
       ]);
 
-      setThreads(threadsData);
+      setThreads(threadsData.threads);
       setRecentActivity(activityData);
       setError(null);
     } catch (err) {

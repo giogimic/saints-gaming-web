@@ -6,3 +6,8 @@ onlyBuiltDependencies:
   - sharp
   - sqlite3
   - unrs-resolver
+
+packages:
+  - '.'
+  - 'packages/*'
+  - 'apps/*'

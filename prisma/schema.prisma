@@ -10,29 +10,29 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
-  admin
+  user
   moderator
-  member
+  admin
 }
 
 model User {
   id               String    @id @default(cuid())
-  name             String?
-  email            String?   @unique
+  name             String?   @db.VarChar(255)
+  email            String?   @unique @db.VarChar(255)
   emailVerified    DateTime?
-  image            String?
-  password         String?
-  role             UserRole  @default(member)
-  bio              String?
-  steamId          String?   @unique
-  discordId        String?
-  twitchId         String?
-  avatar           String?
+  image            String?   @db.VarChar(255)
+  password         String?   @db.VarChar(255)
+  role             UserRole  @default(user)
+  bio              String?   @db.Text
+  steamId          String?   @unique @db.VarChar(255)
+  discordId        String?   @unique @db.VarChar(255)
+  twitchId         String?   @unique @db.VarChar(255)
+  avatar           String?   @db.VarChar(255)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   lastLogin        DateTime?
@@ -49,37 +49,46 @@ model User {
   pages            Page[]
   contentBlocks    ContentBlock[]
   contentRevisions ContentRevision[]
+  createdTags      Tag[]
+  threadSubscriptions ThreadSubscription[]
+
+  @@index([email])
+  @@index([role])
+  @@index([createdAt])
 }
 
 model Account {
   id                String  @id @default(cuid())
   userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  type              String  @db.VarChar(255)
+  provider          String  @db.VarChar(255)
+  providerAccountId String  @db.VarChar(255)
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
+  token_type        String? @db.VarChar(255)
+  scope             String? @db.VarChar(255)
+  id_token          String? @db.Text
+  session_state     String? @db.VarChar(255)
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
   id           String   @id @default(cuid())
-  sessionToken String   @unique
+  sessionToken String   @unique @db.VarChar(255)
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {
-  identifier String
-  token      String   @unique
+  identifier String   @db.VarChar(255)
+  token      String   @unique @db.VarChar(255)
   expires    DateTime
 
   @@unique([identifier, token])
@@ -88,72 +97,90 @@ model VerificationToken {
 model UserSettings {
   id                 String   @id @default(cuid())
   userId             String   @unique
-  theme              String   @default("system")
+  theme              String   @default("system") @db.VarChar(255)
   notifications      Boolean  @default(true)
-  language           String   @default("en")
-  timezone           String   @default("UTC")
+  language           String   @default("en") @db.VarChar(10)
+  timezone           String   @default("UTC") @db.VarChar(50)
   emailNotifications Boolean  @default(true)
   darkMode           Boolean  @default(false)
   showOnlineStatus   Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   user               User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model UserGamingProfile {
   id                String   @id @default(cuid())
   userId            String   @unique
-  favoriteGames     String   @default("[]")
-  gamingSetup       String   @default("[]")
-  gamingPreferences String   @default("[]")
+  favoriteGames     String   @default("[]") @db.Text
+  gamingSetup       String   @default("[]") @db.Text
+  gamingPreferences String   @default("[]") @db.Text
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   user              User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model SocialLink {
   id        String   @id @default(cuid())
   userId    String
-  platform  String
-  url       String
+  platform  String   @db.VarChar(50)
+  url       String   @db.VarChar(255)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@index([userId])
 }
 
 model Category {
   id          String   @id @default(cuid())
-  name        String
-  description String?
-  slug        String   @unique
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  slug        String   @unique @db.VarChar(255)
   order       Int      @default(0)
   isDefault   Boolean  @default(false)
   threads     Thread[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([order])
 }
 
 model Post {
   id        String    @id @default(cuid())
-  content   String
+  content   String    @db.Text
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   authorId  String
   threadId  String
   author    User      @relation(fields: [authorId], references: [id])
-  thread    Thread    @relation(fields: [threadId], references: [id])
+  thread    Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
   comments  Comment[]
+
+  @@index([authorId])
+  @@index([threadId])
+  @@index([createdAt])
 }
 
 model Comment {
   id        String   @id @default(cuid())
-  content   String
+  content   String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   authorId  String
   postId    String
   author    User     @relation(fields: [authorId], references: [id])
-  post      Post     @relation(fields: [postId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([postId])
+  @@index([createdAt])
 }
 
 model Page {
@@ -161,7 +188,7 @@ model Page {
   slug            String            @unique
   title           String
   description     String?
-  content         String
+  content         String            @db.Text
   isPublished     Boolean           @default(false)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
@@ -211,33 +238,95 @@ model ContentRevision {
   blockId    String?
   page       Page?        @relation(fields: [pageId], references: [id])
   pageId     String?
+
+  @@index([pageId])
+  @@index([createdAt])
+}
+
+model Tag {
+  id          String      @id @default(cuid())
+  name        String      @unique @db.VarChar(255)
+  slug        String      @unique @db.VarChar(255)
+  description String?     @db.Text
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  threads     ThreadTag[]
+  createdBy   User        @relation(fields: [createdById], references: [id])
+  createdById String
+
+  @@index([name])
+  @@index([createdById])
+}
+
+model ThreadTag {
+  id        String   @id @default(cuid())
+  threadId  String
+  tagId     String
+  createdAt DateTime @default(now())
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, tagId])
+  @@index([threadId])
+  @@index([tagId])
 }
 
 model Thread {
-  id          String   @id @default(cuid())
-  title       String
-  content     String
+  id          String    @id @default(cuid())
+  title       String    @db.VarChar(255)
+  content     String    @db.Text
+  slug        String    @unique @db.VarChar(255)
   authorId    String
   categoryId  String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  isPinned    Boolean  @default(false)
-  isLocked    Boolean  @default(false)
-  views       Int      @default(0)
-  author      User     @relation(fields: [authorId], references: [id])
-  category    Category @relation(fields: [categoryId], references: [id])
+  isPinned    Boolean   @default(false)
+  isLocked    Boolean   @default(false)
+  isHidden    Boolean   @default(false)
+  viewCount   Int       @default(0)
+  lastPostAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  author      User      @relation(fields: [authorId], references: [id])
+  category    Category  @relation(fields: [categoryId], references: [id])
   posts       Post[]
+  threadTags  ThreadTag[]
+  views       ThreadView[]
+  subscribers ThreadSubscription[]
+
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([lastPostAt])
+  @@index([isPinned])
+  @@index([isLocked])
+  @@index([isHidden])
+  @@index([createdAt])
+}
+
+model ThreadSubscription {
+  id        String   @id @default(cuid())
+  threadId  String
+  userId    String
+  createdAt DateTime @default(now())
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, userId])
+  @@index([threadId])
+  @@index([userId])
 }
 
 model News {
   id        String   @id @default(cuid())
-  title     String
-  content   String
+  title     String   @db.VarChar(255)
+  content   String   @db.Text
   authorId  String
   published Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   author    User     @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
+  @@index([published])
+  @@index([createdAt])
 }
 
 model SiteSettings {
@@ -249,30 +338,34 @@ model SiteSettings {
 
 model Server {
   id          String   @id @default(cuid())
-  name        String
-  description String
-  image       String
-  status      String   @default("offline")
+  name        String   @db.VarChar(255)
+  description String   @db.Text
+  image       String   @db.VarChar(255)
+  status      String   @default("offline") @db.VarChar(50)
   players     Int      @default(0)
   maxPlayers  Int      @default(0)
-  version     String
-  ip          String
-  type        String
-  features    String   @default("[]")
-  rules       String   @default("[]")
+  version     String   @db.VarChar(50)
+  ip          String   @db.VarChar(255)
+  type        String   @db.VarChar(50)
+  features    String   @default("[]") @db.Text
+  rules       String   @default("[]") @db.Text
   modpack     Json?
   metadata    Json?
   order       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([order])
 }
 
 model NewsArticle {
   id        String   @id @default(cuid())
-  title     String
-  content   String
-  excerpt   String
-  image     String
+  title     String   @db.VarChar(255)
+  content   String   @db.Text
+  excerpt   String   @db.Text
+  image     String   @db.VarChar(255)
   featured  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -280,13 +373,31 @@ model NewsArticle {
   authorId  String
   category  NewsCategory @relation(fields: [categoryId], references: [id])
   categoryId String
+
+  @@index([authorId])
+  @@index([categoryId])
+  @@index([featured])
+  @@index([createdAt])
 }
 
 model NewsCategory {
   id        String   @id @default(cuid())
-  name      String   @unique
-  slug      String   @unique
+  name      String   @unique @db.VarChar(255)
+  slug      String   @unique @db.VarChar(255)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   articles  NewsArticle[]
+
+  @@index([slug])
+}
+
+model ThreadView {
+  id        String   @id @default(cuid())
+  threadId  String
+  ipAddress String   @db.VarChar(45)
+  viewedAt  DateTime @default(now())
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, ipAddress])
+  @@index([threadId])
 }

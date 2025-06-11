@@ -1,47 +1,90 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { z } from 'zod';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { authOptions } from '@/lib/auth-config';
-import { checkPermission } from '@/lib/permissions';
+import { handleForumError, validateCommentInput, ForumError } from '@/lib/forum-error-handler';
 
-const commentSchema = z.object({
-  content: z.string().min(1).max(1000),
-  postId: z.string(),
-});
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const postId = searchParams.get('postId');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const skip = (page - 1) * limit;
 
-export async function POST(req: Request) {
+    if (!postId) {
+      throw new ForumError('Post ID is required', 400);
+    }
+
+    const [comments, total] = await Promise.all([
+      prisma.comment.findMany({
+        where: { postId },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.comment.count({ where: { postId } }),
+    ]);
+
+    return NextResponse.json({
+      comments,
+      pagination: {
+        total,
+        pages: Math.ceil(total / limit),
+        current: page,
+      },
+    });
+  } catch (error) {
+    return handleForumError(error);
+  }
+}
+
+export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      throw new ForumError('Unauthorized', 401);
     }
 
-    const json = await req.json();
-    const body = commentSchema.parse(json);
+    const data = await request.json();
+    const { content, postId } = validateCommentInput(data);
 
+    // Check if post exists
     const post = await prisma.post.findUnique({
-      where: { id: body.postId },
-      select: {
+      where: { id: postId },
+      include: {
         thread: {
-          select: { isLocked: true },
+          select: {
+            isLocked: true,
+          },
         },
       },
     });
 
     if (!post) {
-      return new NextResponse('Post not found', { status: 404 });
+      throw new ForumError('Post not found', 404);
     }
 
     if (post.thread.isLocked) {
-      return new NextResponse('Thread is locked', { status: 403 });
+      throw new ForumError('Thread is locked', 403);
     }
 
     const comment = await prisma.comment.create({
       data: {
-        content: body.content,
-        postId: body.postId,
+        content,
         authorId: session.user.id,
+        postId,
       },
       include: {
         author: {
@@ -54,45 +97,43 @@ export async function POST(req: Request) {
       },
     });
 
+    // Update thread's lastPostAt
+    await prisma.thread.update({
+      where: { id: post.threadId },
+      data: { lastPostAt: new Date() },
+    });
+
     return NextResponse.json(comment);
   } catch (error) {
-    console.error('[COMMENTS_POST]', error);
-    if (error instanceof z.ZodError) {
-      return new NextResponse('Invalid request data', { status: 422 });
-    }
-    return new NextResponse('Internal error', { status: 500 });
+    return handleForumError(error);
   }
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      throw new ForumError('Unauthorized', 401);
     }
 
-    const json = await req.json();
-    const { id, content } = z
-      .object({
-        id: z.string(),
-        content: z.string().min(1).max(1000),
-      })
-      .parse(json);
+    const data = await request.json();
+    const { id, content } = data;
+
+    if (!id) {
+      throw new ForumError('Comment ID is required', 400);
+    }
 
     const comment = await prisma.comment.findUnique({
       where: { id },
-      select: { authorId: true },
+      include: { author: true },
     });
 
     if (!comment) {
-      return new NextResponse('Comment not found', { status: 404 });
+      throw new ForumError('Comment not found', 404);
     }
 
     if (comment.authorId !== session.user.id) {
-      const hasPermission = await checkPermission(session.user.id, 'edit:comments');
-      if (!hasPermission) {
-        return new NextResponse('Forbidden', { status: 403 });
-      }
+      throw new ForumError('Not authorized to edit this comment', 403);
     }
 
     const updatedComment = await prisma.comment.update({
@@ -111,42 +152,35 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json(updatedComment);
   } catch (error) {
-    console.error('[COMMENTS_PATCH]', error);
-    if (error instanceof z.ZodError) {
-      return new NextResponse('Invalid request data', { status: 422 });
-    }
-    return new NextResponse('Internal error', { status: 500 });
+    return handleForumError(error);
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      throw new ForumError('Unauthorized', 401);
     }
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (!id) {
-      return new NextResponse('Comment ID is required', { status: 400 });
+      throw new ForumError('Comment ID is required', 400);
     }
 
     const comment = await prisma.comment.findUnique({
       where: { id },
-      select: { authorId: true },
+      include: { author: true },
     });
 
     if (!comment) {
-      return new NextResponse('Comment not found', { status: 404 });
+      throw new ForumError('Comment not found', 404);
     }
 
     if (comment.authorId !== session.user.id) {
-      const hasPermission = await checkPermission(session.user.id, 'delete:comments');
-      if (!hasPermission) {
-        return new NextResponse('Forbidden', { status: 403 });
-      }
+      throw new ForumError('Not authorized to delete this comment', 403);
     }
 
     await prisma.comment.delete({
@@ -155,7 +189,6 @@ export async function DELETE(req: Request) {
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error('[COMMENTS_DELETE]', error);
-    return new NextResponse('Internal error', { status: 500 });
+    return handleForumError(error);
   }
 } 
