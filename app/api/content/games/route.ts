@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/auth-config";
 import prisma from "@/lib/prisma";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
     const page = await prisma.page.findFirst({
       where: {
         slug: "games",
@@ -12,6 +13,23 @@ export async function GET() {
     });
 
     if (!page) {
+      // Get or create a system user for content creation
+      let systemUser = await prisma.user.findFirst({
+        where: {
+          email: "system@saintsgaming.com",
+        },
+      });
+
+      if (!systemUser) {
+        systemUser = await prisma.user.create({
+          data: {
+            email: "system@saintsgaming.com",
+            name: "System",
+            role: "admin",
+          },
+        });
+      }
+
       // Create default content if page doesn't exist
       const defaultContent = {
         title: "Our Games",
@@ -72,7 +90,10 @@ export async function GET() {
           slug: "games",
           title: "Our Games",
           content: JSON.stringify(defaultContent),
-          createdById: "system",
+          createdById: systemUser.id,
+          isPublished: true,
+          description: "Games page content",
+          template: "default"
         },
       });
 
