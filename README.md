@@ -1,6 +1,7 @@
 # Saints Gaming Web
 
-A modern web application for Saints Gaming community.
+Many features may not be functional yet working on this still. 
+Not meant for use just learning. 
 
 ## Tech Stack
 
